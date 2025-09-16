@@ -12,5 +12,5 @@ ldifImport:
 global:
   registry:
     credentials:
-      username: tony.liang@broadcom.com
-      password: <your_key>
+      username: ${SSP_HELM_USERNAME}
+      password: ${SSP_HELM_PASSWORD}

@@ -107,7 +107,7 @@ global:
   configuration:
     repository: siteminder.packages.broadcom.com/casso
     image: config-retriever
-    tag: 12.8.0801.3037
+    
     enabled: true
     type: "git"
     aws:
@@ -120,7 +120,7 @@ global:
   runtimeConfiguration:
     repository: siteminder.packages.broadcom.com/casso
     image: runtime-config-retriever
-    tag: 12.8.0801.3037
+    
     resources:
       requests:
         cpu: 100m
@@ -185,7 +185,7 @@ global:
       anonAzAuditing: "NO"
       affiliateAuditing: 0
     sessionStore:
-      enabled: true
+      enabled: false
       service: "pstore-ssp-symantec-dir.pstore.svc.cluster.local:389"
       userPassword: "cGFzc3dvcmQ="
       type: "ldap"
@@ -223,7 +223,7 @@ policyServer:
         - "www.example.com"
   repository: siteminder.packages.broadcom.com/casso
   image: policy-server
-  tag: 12.8.0801.3037
+  
   resources:
     requests:
       cpu: 1000m
@@ -261,7 +261,7 @@ policyServer:
         memory: 200Mi
     repository: siteminder.packages.broadcom.com/casso
     image: metricsexporter
-    tag: 12.8.0801.3037
+    
     livenessProbe:
       initialDelaySeconds: 180
       timeoutSeconds: 5
@@ -279,7 +279,7 @@ admin:
   policyServer:
     repository: siteminder.packages.broadcom.com/casso
     image: policy-server
-    tag: 12.8.0801.3037
+    
     resources:
       requests:
         cpu: 500m
@@ -294,7 +294,7 @@ admin:
   adminUI:
     repository: siteminder.packages.broadcom.com/casso
     image: admin-ui
-    tag: 12.8.0801.3037
+    
     resources:
       requests:
         cpu: 500m
