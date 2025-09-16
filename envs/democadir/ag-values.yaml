@@ -35,7 +35,7 @@ images:
   sso:
     registry:
       credentials:
-        username: iambnr
+        username: ${SMDOCKERID}
         password: ${SMDOCKERPWD}
       url: https://siteminder.packages.broadcom.com/
     accessGateway:
@@ -202,10 +202,10 @@ sso:
         enabled: true
     regSecret:
       name: "regadmincreds"
-  adminUsername: "c2l0ZW1pbmRlcg=="
-  adminPassword: "Q0FEZW1vQDEyMw=="
+  adminUsername: "${SMREGID}"
+  adminPassword: "${SMREGPWD}"
 nodeSelector: {}
 tolerations: []
 affinity: {}
 masterkey:
-  masterKeySeed: TUtleTEyMw==
+  masterKeySeed: ${MKEY}

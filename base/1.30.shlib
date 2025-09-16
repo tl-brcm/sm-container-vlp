@@ -1,5 +1,0 @@
-#!/bin/bash
-INGRESSVER="--version=4.5.2"
-ELASTICVER="--version 7.17.3"
-KIBANAVER="--version 7.17.3"
-PROMETHEUSVER='--version=31.0.0'

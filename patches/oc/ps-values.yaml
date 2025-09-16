@@ -1,9 +1,0 @@
-securityContext:
-  runAsUser: 1000690001
-
-podSecurityContext:
-  fsGroup: 1000690001
-  runAsUser: 1000690001
-
-sysctlInitContainer:
-  enabled: false

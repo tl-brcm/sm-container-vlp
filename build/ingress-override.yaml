@@ -1,7 +1,0 @@
-controller:
-  service:
-    externalTrafficPolicy: Cluster
-    annotations:
-      cloud.google.com/load-balancer-type: Internal
-  config:
-    annotation-value-word-blocklist: load_module,lua_package,_by_lua,location,root,proxy_pass,serviceaccount,{,},',\

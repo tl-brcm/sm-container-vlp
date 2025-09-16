@@ -1,5 +1,0 @@
-oracle_sid: SESSION_STORE
-oracle_pwd: password
-loadBalService: true
-persistence: 
-  storageClass: premium-rwo

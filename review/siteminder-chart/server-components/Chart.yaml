@@ -1,5 +1,0 @@
-apiVersion: v2
-appVersion: 12.8.07.3100
-description: 2023.Sept.01 - Helm chart to deploy SiteMinder Server Components
-name: server-components
-version: 1.0.3100

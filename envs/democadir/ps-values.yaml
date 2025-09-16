@@ -116,7 +116,7 @@ global:
       accessKey: ""
     git:
       username: "${GITID}"
-            accessToken: "${GITPAT}"
+      accessToken: "${GITPAT}"
   runtimeConfiguration:
     repository: siteminder.packages.broadcom.com/casso
     image: runtime-config-retriever
