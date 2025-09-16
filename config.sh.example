@@ -1,0 +1,67 @@
+#!/bin/bash
+
+# This is an example configuration file.
+# Please copy this file to config.sh and fill in your actual values.
+# The config.sh file is ignored by git.
+
+# --- General ---
+export DOMAIN="demo-broadcom.com"
+export CLUSTER_TYPE="k8s"
+
+# --- Certificates ---
+# Wild Card Certificate PEM file for the various Web UIs
+export CERTFILE="base/k8s/k8s.pem"
+# None-password protected private key file
+export KEYFILE="base/k8s/k8s.key"
+
+# --- Siteminder Helm Repository ---
+export SMREPO="siteminder"
+export SMURL="https://packages.broadcom.com/artifactory/api/helm/siteminder-helm/"
+export SMID="" # Authorized SiteMinder Helm Repo ID
+export SMPWD='' # Authorized SiteMinder Helm Repo Password
+export SMVER="--version=12.9.000+3079"
+
+# --- Siteminder Docker Registry ---
+export SMDOCKERID="$SMID"
+export SMDOCKERPWD="$SMPWD"
+export SMDOCKERHOST="siteminder.packages.broadcom.com"
+export SMDOCKERUSER="casso"
+export SMDOCKERREPOBASE="$SMDOCKERHOST/$SMDOCKERUSER"
+export SMDOCKERURL="https://$SMDOCKERHOST/"
+
+# --- Siteminder Server Components (Policy Server) ---
+export PSNS="siteminder"
+export PSREL="siteminderserver"
+export PSNAME="ps2.$DOMAIN"
+export PSVALUES="envs/democadir/ps-values.yaml"
+
+# --- Siteminder Access Gateway ---
+export AGNS="siteminderag"
+export AGREL="siteminderserver"
+export AGNAME="sps2.$DOMAIN"
+export AGVALUES="envs/democadir/ag-values.yaml"
+
+# --- Siteminder Base Configuration ---
+export MKEY="MKey123" # Master Key Seed
+export SUPERID="siteminder" # SiteMinder Super User ID
+export SPASS="P@ssw0rd1" # Superuser Password
+export EKEY="EKey123" # Encryption Key
+
+# --- LDAP Policy Store ---
+export LDAP="pstore-ssp-symantec-dir.pstore.svc.cluster.local:389"
+export RDN="o=democorp,c=us" # LDAP Root DN
+export BDN="cn=admin,o=democorp,c=us" # LDAP Bind DN
+export BPASS="password" # LDAP Bind Password
+
+# --- Git Config Retriever ---
+export GITREPOBASE="github.com/tc09-brcm-social/sm2022configr.git"
+export GITBRANCH="skeleton"
+export GITID="dummy"
+export GITPAT="dummypass"
+
+# --- Access Gateway Configuration ---
+export AGTH="sps2.${DOMAIN}" # Access Gateway Trusted Host Name
+export AGACO="SecureProxyServer" # Access Gateway ACO name
+export AGHCO="InitialHCO" # Access Gateway HCO name
+export SMREGID=$SUPERID # SiteMinder Registration ID
+export SMREGPWD=$SPASS # SiteMinder Registration password

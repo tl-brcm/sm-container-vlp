@@ -1,0 +1,357 @@
+global:
+  fullname: casso
+  acceptLicenseAgreement: "YES"
+  existingServiceAccount: ""
+  securityContext:
+    runAsUser: 65534
+    runAsGroup: 65534
+    fsGroup: 1337
+  registry:
+    url: https://siteminder.packages.broadcom.com/
+    existingSecrets: []
+    credentials:
+      username: ${SMDOCKERID}
+      password: ${SMDOCKERPWD} 
+  masterKeySeed: "${MKEY}"
+  fipsMode: "COMPAT"
+  superuserPassword: "${SPASS}"
+  encryptionKey: "${EKEY}"
+  policyStore:
+    service: "${LDAP}"
+    userPassword: "${BPASS}"
+    type: "ldap"
+    odbc:
+      type: "mysql"
+      databaseName: "POLICYSTORE_DATABASENAME"
+      DSN: "POLICYSTORE_DSN"
+      user: "POLICYSTORE_USER"
+      oracle:
+        databaseServiceName: "POLICYSTORE_ORACLE_SERVICE"
+      ssl:
+        enabled: false
+        trustStore: ""
+        hostNameInCertificate: ""
+        trustPassword: ""
+    ldap:
+      type: "cadir"
+      rootDN: "${RDN}"
+      userDN: "${BDN}"
+      ssl:
+        enabled: false
+  imagePullPolicy: Always
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+  terminationMessagePath: /dev/termination-log
+  policyServerParams:
+    healthProbe:
+      port: 8181
+      trustedHost: "healthprobe"
+      intervalSeconds: 10
+      connectMode: "HTTP"
+      keyStoreFileName: "psprobekeystore.jks"
+      keyStorePassword: ""
+    startupProbe:
+      periodSeconds: 10
+      failureThreshold: 30
+    livenessProbe:
+      initialDelaySeconds: 10
+      timeoutSeconds: 10
+      periodSeconds: 10
+      failureThreshold: 3
+    readinessProbe:
+      initialDelaySeconds: 15
+      timeoutSeconds: 10
+      periodSeconds: 10
+      failureThreshold: 2
+    certUtil:
+      trustAttributes:
+        rootCA: "C,,"
+        server: "P,,"
+    smTrace:
+      enabled: true
+    ovm:
+      enabled: false
+      serviceToConnect: casso-siteminder-ovm-admin.cassoserver.svc.cluster.local,44449
+    startPSMon: "false"
+    agentConnectionMaxLifetime: 0
+    admin:
+      service:
+        type: ClusterIP
+    service:
+      type: NodePort
+      annotations:
+        enabled: false
+        values: {}
+    enableSymantecIGAIntegration: false
+    inMemoryTrace:
+      enabled: false
+      size: 100
+    secrets:
+      importPassphrase: ""
+      ldapSSLNSSDBPassword: ""
+  corePath: /tmp/core/
+  troubleshootingData:
+    enabled: false
+    storageType: "awsS3"
+    archiveFiles: []
+    aws:
+      bucketName: ""
+      region: ""
+      keyID: ""
+      accessKey: ""
+    azure:
+      fileEndpoint: ""
+      fileShareName: ""
+      directoryPath: ""
+      sasToken: ""
+  configuration:
+    repository: siteminder.packages.broadcom.com/casso
+    image: config-retriever
+    tag: 12.8.0801.3037
+    enabled: true
+    type: "git"
+    aws:
+      region: ""
+      keyID: ""
+      accessKey: ""
+    git:
+      username: "${GITID}"
+            accessToken: "${GITPAT}"
+  runtimeConfiguration:
+    repository: siteminder.packages.broadcom.com/casso
+    image: runtime-config-retriever
+    tag: 12.8.0801.3037
+    resources:
+      requests:
+        cpu: 100m
+        memory: 200Mi
+    intervalSeconds: !!int "60"
+    type: "git"
+    aws:
+      region: ""
+      keyID: ""
+      accessKey: ""
+    git:
+      username: "dummy"
+      accessToken: "ZHVtbXlwYXNz"
+  stores:
+    keyStore:
+      embedded: "YES"
+      service: "KEYSTORE_HOST:PORT"
+      userPassword: ""
+      encryptionKey: ""
+      type: "odbc"
+      odbc:
+        type: "mysql"
+        databaseName: "KEYSTORE_DATABASE"
+        DSN: "KEYSTORE_DSN"
+        user: "KEYSTORE_USER"
+        oracle:
+          databaseServiceName: "KEYSTORE_ORACLE_SERVICE"
+        ssl:
+          enabled: false
+          trustStore: ""
+          hostNameInCertificate: ""
+          trustPassword: ""
+      ldap:
+        type: "cadir"
+        rootDN: "KEYSTORE_ROOTDN"
+        userDN: "KEYSTORE_USERDN"
+        ssl:
+          enabled: false
+    auditStore:
+      enabled: false
+      type: "odbc"
+      odbc:
+        DSN: "mysql-audit"
+        user: "root"
+        userPassword: "aVgwZGRUSHgtYkJSMC1Ecm0wY3FmeQ=="
+        type: "mysql"
+        service: "mysql-ustore-u9055.vm.elestio.app:24306"
+        databaseName: "ustore"
+        oracle:
+          databaseServiceName: "AUDITSTORE_ORACLE_SERVICE"
+        ssl:
+          enabled: false
+          trustStore: ""
+          hostNameInCertificate: ""
+          trustPassword: ""
+      auditUserActivity: "YES"
+      auditAdminStoreActivity: "NO"
+      adminActivity: 1
+      enableAuthAuditing: 1
+      enableAzAuditing: 1
+      anonAuthAuditing: "NO"
+      anonAzAuditing: "NO"
+      affiliateAuditing: 0
+    sessionStore:
+      enabled: true
+      service: "pstore-ssp-symantec-dir.pstore.svc.cluster.local:389"
+      userPassword: "cGFzc3dvcmQ="
+      type: "ldap"
+      odbc:
+        DSN: "SESSIONSTORE_DSN"
+        type: "mysql"
+        databaseName: "SESSIONSTORE_DATABASE"
+        user: "SESSIONSTORE_USER"
+        oracle:
+          databaseServiceName: "SESSIONSTORE_ORACLE_SERVICE"
+        ssl:
+          enabled: false
+          trustStore: ""
+          hostNameInCertificate: ""
+          trustPassword: ""
+      ldap:
+        rootDN: "ou=sstore,o=democorp,c=us"
+        userDN: "cn=admin,o=democorp,c=us"
+        ssl:
+          enabled: false
+  logging:
+    repository: siteminder.packages.broadcom.com/casso
+policyServer:
+  enabled: true
+  replicas: 1
+  annotations:
+    values: {prometheus.io/scrape: 'true', prometheus.io/port: '8088', prometheus.io/path: '/metricsexporter/resources/metrics'}
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 25%
+  hostAliases:
+    - ip: "192.168.1.10"
+      hostnames:
+        - "example.com"
+        - "www.example.com"
+  repository: siteminder.packages.broadcom.com/casso
+  image: policy-server
+  tag: 12.8.0801.3037
+  resources:
+    requests:
+      cpu: 1000m
+      memory: 500Mi
+  initializationTimeout: 120
+  podTerminateGracePeriod: 60
+  rsaSecureId:
+    enabled: false
+    nodeSecretEncryptionPassword: ""
+  serviceNodePort:
+    psHealthProbe: 31333
+  aps:
+    enabled: false
+  enableSymantecAdvancedAuthenticationIntegration: false
+  enableRadiusServer: false
+  configuration:
+    source: "https://github.com/tl-brcm/sm2022configr.git;ag-voonair2-nocert"
+    gitFolderPath: "/deploy/policyserver"
+  runtimeConfiguration:
+    enabled: true
+    source: "https://github.com/tc09-brcm-social/sm2022configr.git;skeleton"
+    runtimeGitFolderPath: "/runtime/policyserver"
+  autoscaling:
+    enabled: true
+    type: "both"
+    replicasMin: 1
+    replicasMax: 10
+    cpuUtilization: 70
+    averageRequestQueueInUse: 15
+  metricsExporter:
+    enabled: true
+    resources:
+      requests:
+        cpu: 200m
+        memory: 200Mi
+    repository: siteminder.packages.broadcom.com/casso
+    image: metricsexporter
+    tag: 12.8.0801.3037
+    livenessProbe:
+      initialDelaySeconds: 180
+      timeoutSeconds: 5
+    readinessProbe:
+      initialDelaySeconds: 30
+      periodSeconds: 5
+admin:
+  enabled: true
+  replicas: 1
+  hostAliases:
+    - ip: "192.168.1.10"
+      hostnames:
+        - "example.com"
+        - "www.example.com"
+  policyServer:
+    repository: siteminder.packages.broadcom.com/casso
+    image: policy-server
+    tag: 12.8.0801.3037
+    resources:
+      requests:
+        cpu: 500m
+        memory: 500Mi
+    xpsSchemaUpgrade: "NO"
+    importDefaultCACertificates:
+      enabled: false
+    agentKeyGeneration:
+      enabled: true
+    keyUpdate:
+      enabled: true
+  adminUI:
+    repository: siteminder.packages.broadcom.com/casso
+    image: admin-ui
+    tag: 12.8.0801.3037
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+    regMaxTimeoutSeconds: 300
+    livenessProbe:
+      initialDelaySeconds: 140
+      timeoutSeconds: 10
+      periodSeconds: 10
+      failureThreshold: 12
+    readinessProbe:
+      initialDelaySeconds: 140
+      timeoutSeconds: 12
+      periodSeconds: 14
+      failureThreshold: 12
+    customClientIPHeader: "x-forwarded-for"
+    Auth:
+      externalAuth:
+        enabled: false
+      importFile: "CADirectory---19772ea49ed.xml"
+      type: "ldap"
+      odbc:
+        dataSourceName: "smadministrators"
+        odbcType: ""
+        serverName: ""
+        serverPort: ""
+        databaseName: ""
+        username: ""
+        userPassword: ""
+      ldap:
+        userPassword: "cGFzc3dvcmQ="
+    customKeyStore:
+      enabled: false
+      password: ""
+      aliasKey: "tomcat"
+  ingress:
+    className: "nginx"
+    hostName: ${PSNAME}
+    servicePort: 8443
+    tlsCrt: "${TLS_CERT}"
+    tlsKey: "${TLS_KEY}"
+  configuration:
+    source: "https://github.com/tl-brcm/sm2022configr.git;ag-voonair2-nocert"
+    gitFolderPath: "/deploy/admin"
+  runtimeConfiguration:
+    source: "https://github.com/tc09-brcm-social/sm2022configr.git;skeleton"
+    enabled: true
+    runtimeGitFolderPath: "/runtime/admin"
+maintenance:
+  enabled: true
+  operation:
+    name: "XPSImport"
+    args: "/opt/CA/siteminder/xps/hco.xml -npass"
+    input_file: ""
+  job:
+    restartPolicy: Never
+    backOffLimit: 1
+nodeSelector: {}
+tolerations: []
+affinity: {}

@@ -1,0 +1,127 @@
+apiVersion: v1
+data:
+  pstore-ssp-symantec-dir-base.ldif: |-
+    # DO NOT EDIT - SKELETON LDIF
+
+    dn: cn=admin,o=democorp,c=us
+    objectClass: inetOrgPerson
+    objectClass: organizationalPerson
+    objectClass: person
+    objectClass: top
+    cn: admin
+    sn: user
+    userPassword: ${ADMIN_PASSWORD}
+
+    #
+  pstore-ssp-symantec-dir-knowledge.dxc: |-
+    # Create the knowledge file for the DSA
+    set dsa "pstore-ssp-symantec-dir" =
+    {
+      prefix              = <c us><o democorp>
+      dsa-name            = <c us><o democorp><cn pstore-ssp-symantec-dir>
+      dsa-password        = "secret"
+      address             = tcp "0c1d3ead5118" port 10389, ipv4 "0c1d3ead5118" port 10389
+      disp-psap           = DISP
+      snmp-port           = 10389
+      console-port        = 10390
+      remote-console-port = 10395
+      auth-levels         = anonymous, clear-password
+      dsa-flags           = no-service-while-recovering, multi-write
+      trust-flags         = allow-check-password, trust-conveyed-originator, trust-dsa-triggered-operations
+    };
+  pstore-ssp-symantec-dir-logging.dxc: |-
+    # Daily warning, statistics, diagnostic & summary logs
+    #set cert-log = "logs/$s_cert.log";
+    #set connect-log = "logs/$s_connect.log";
+    #set diag-log = "logs/$s_diag.log";
+    #set query-log = "logs/$s_query.log";
+    #set query-log-advanced = all;
+    #set stats-log = "logs/$s_stats.log";
+    #set extended-stats-tracing = true;
+    #set summary-log = "logs/$s_summary.log";
+    #set time-log = "logs/$s_time.log";
+    #set time-log-search-threshold = 100;
+    #set time-log-update-threshold = 100;
+
+    # DSA trace log - Used for debugging
+    # Set trace to error for production systems, dsa level is appropriate for debugging only
+    # possible values: alert, cert,connect,diag,dsa,error,ldap,limit,query,stack,stats,summary,time,update,warn,x500 and none
+    # See documentation for other trace settings
+    set trace-log = "logs/$s_trace.log";
+    set trace = error;
+    set rollover-trace-log = true;
+    #set update-log = "logs/$s_update.log";
+    #set update-log-show-values = false;
+    #set warn-log = "logs/$s_warn.log";
+
+    set rollover-alarm-log = true;
+  pstore-ssp-symantec-dir-ssld.dxc: |-
+    set ssl = {
+        cert-file = "/opt/CA/Directory/dxserver/config/tls/pstore-ssp-symantec-dir.pem"
+        ca-file = "/opt/CA/Directory/dxserver/config/tls/trusted.pem"
+    };
+  pstore-ssp-symantec-dir.dxi: |-
+    # schema
+    source "../schema/x500.dxc";
+    source "../schema/cosine.dxc";
+    source "../schema/umich.dxc";
+    source "../schema/inetop.dxc";
+    source "../schema/dxserver.dxc";
+    # required for memberOf
+    source "../schema/nsroaming.dxc";
+    source "../schema/sunone.dxc";
+
+    # knowledge
+    clear dsas;
+    source "../knowledge/pstore-ssp-symantec-dir.dxc";
+
+
+    # ssl
+    source "../tls/pstore-ssp-symantec-dir-ssld.dxc";
+
+    # logging
+    source "../logging/pstore-ssp-symantec-dir-logging.dxc";
+
+    set ignore-name-bindings = true;
+    # size limits
+    set max-users = 1000;
+    set max-op-size = 4000;
+    set multi-write-queue = 20000;
+
+    # time limits
+    set max-bind-time = none;
+    set bind-idle-time = 3600;
+    set max-op-time = 600;
+    set credits = 5;
+    set max-local-ops = 1000;
+
+    # grid configuration
+    set dxgrid-db-location = "data";
+    set dxgrid-db-size = 500;
+    set cache-index = all-attributes;
+    set lookup-cache = true;
+    set multi-write-disp-recovery = true;
+
+    # enable UUID for directory objects
+    set add-entryuuid = true;
+
+    set memberof-user-containers = <c us><o democorp>;
+    set memberof-group-containers = <c us><o democorp><ou Groups>;
+kind: ConfigMap
+metadata:
+  annotations:
+    meta.helm.sh/release-name: pstore
+    meta.helm.sh/release-namespace: pstore
+  creationTimestamp: "2023-10-13T16:49:15Z"
+  labels:
+    app.kubernetes.io/component: id-store
+    app.kubernetes.io/instance: pstore
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: ssp-symantec-dir
+    app.kubernetes.io/part-of: ssp-symantec-dir
+    app.kubernetes.io/version: 2.1.5_1047
+    helm.sh/chart: ssp-symantec-dir-2.1.5_1047
+  name: pstore-ssp-symantec-dir-config
+  namespace: pstore
+  resourceVersion: "3566253"
+  uid: 67f41fb3-9aea-4e04-857f-d631c335df8f

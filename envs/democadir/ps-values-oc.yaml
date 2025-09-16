@@ -1,0 +1,355 @@
+global:
+  fullname: casso
+  acceptLicenseAgreement: "YES"
+  existingServiceAccount: ""
+  securityContext:
+    runAsUser: 65534
+    runAsGroup: 65534
+    fsGroup: 1337
+  registry:
+    url: https://siteminder.packages.broadcom.com/
+    existingSecrets: []
+    credentials:
+      username: iambnr
+      password: x
+  masterKeySeed: "TUtleTEyMw=="
+  fipsMode: "COMPAT"
+  superuserPassword: "UEBzc3cwcmQx"
+  encryptionKey: "RUtleTEyMw=="
+  policyStore:
+    service: "34.83.57.173:5389"
+    userPassword: "cGFzc3dvcmQ="
+    type: "ldap"
+    odbc:
+      type: "mysql"
+      databaseName: "POLICYSTORE_DATABASENAME"
+      DSN: "POLICYSTORE_DSN"
+      user: "POLICYSTORE_USER"
+      oracle:
+        databaseServiceName: "POLICYSTORE_ORACLE_SERVICE"
+      ssl:
+        enabled: false
+        trustStore: ""
+        hostNameInCertificate: ""
+        trustPassword: ""
+    ldap:
+      type: "cadir"
+      rootDN: "ou=policystore,o=SiteMinder"
+      userDN: "uid=dxadmin,ou=Admins,ou=policystore,o=SiteMinder"
+      ssl:
+        enabled: false
+  imagePullPolicy: Always
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+  terminationMessagePath: /dev/termination-log
+  policyServerParams:
+    healthProbe:
+      port: 8181
+      trustedHost: "healthprobe"
+      intervalSeconds: 10
+      connectMode: "HTTP"
+      keyStoreFileName: "psprobekeystore.jks"
+      keyStorePassword: ""
+    startupProbe:
+      periodSeconds: 10
+      failureThreshold: 30
+    livenessProbe:
+      initialDelaySeconds: 10
+      timeoutSeconds: 10
+      periodSeconds: 10
+      failureThreshold: 3
+    readinessProbe:
+      initialDelaySeconds: 15
+      timeoutSeconds: 10
+      periodSeconds: 10
+      failureThreshold: 2
+    certUtil:
+      trustAttributes:
+        rootCA: "C,,"
+        server: "P,,"
+    smTrace:
+      enabled: true
+    ovm:
+      enabled: false
+      serviceToConnect: casso-siteminder-ovm-admin.cassoserver.svc.cluster.local,44449
+    startPSMon: "false"
+    agentConnectionMaxLifetime: 0
+    admin:
+      service:
+        type: ClusterIP
+    service:
+      type: NodePort
+      annotations:
+        enabled: false
+        values: {}
+    enableSymantecIGAIntegration: "NO"
+    inMemoryTrace:
+      enabled: false
+      size: 100
+    secrets:
+      importPassphrase: ""
+      ldapSSLNSSDBPassword: ""
+  corePath: /tmp/core/
+  troubleshootingData:
+    enabled: false
+    storageType: "awsS3"
+    archiveFiles: []
+    aws:
+      bucketName: ""
+      region: ""
+      keyID: ""
+      accessKey: ""
+    azure:
+      fileEndpoint: ""
+      fileShareName: ""
+      directoryPath: ""
+      sasToken: ""
+  configuration:
+    repository: siteminder.packages.broadcom.com/casso
+    image: config-retriever
+    tag: 12.8.07.3100
+    enabled: true
+    type: "git"
+    aws:
+      region: ""
+      keyID: ""
+      accessKey: ""
+    git:
+      username: "dummy"
+      accessToken: "ZHVtbXlwYXNz"
+  runtimeConfiguration:
+    repository: siteminder.packages.broadcom.com/casso
+    image: runtime-config-retriever
+    tag: 12.8.07.3100
+    resources:
+      requests:
+        cpu: 100m
+        memory: 200Mi
+    intervalSeconds: !!int "60"
+    type: "git"
+    aws:
+      region: ""
+      keyID: ""
+      accessKey: ""
+    git:
+      username: "dummy"
+      accessToken: "ZHVtbXlwYXNz"
+  stores:
+    keyStore:
+      embedded: "YES"
+      service: "KEYSTORE_HOST:PORT"
+      userPassword: ""
+      encryptionKey: ""
+      type: "odbc"
+      odbc:
+        type: "mysql"
+        databaseName: "KEYSTORE_DATABASE"
+        DSN: "KEYSTORE_DSN"
+        user: "KEYSTORE_USER"
+        oracle:
+          databaseServiceName: "KEYSTORE_ORACLE_SERVICE"
+        ssl:
+          enabled: false
+          trustStore: ""
+          hostNameInCertificate: ""
+          trustPassword: ""
+      ldap:
+        type: "cadir"
+        rootDN: "KEYSTORE_ROOTDN"
+        userDN: "KEYSTORE_USERDN"
+        ssl:
+          enabled: false
+    auditStore:
+      enabled: false
+      type: "text"
+      odbc:
+        DSN: "AUDITSTORE_DSN"
+        user: "AUDITSTORE_USER"
+        userPassword: ""
+        type: "mysql"
+        service: "AUDITSTORE_HOST:PORT"
+        databaseName: "AUDITSTORE_DATABASENAME"
+        oracle:
+          databaseServiceName: "AUDITSTORE_ORACLE_SERVICE"
+        ssl:
+          enabled: false
+          trustStore: ""
+          hostNameInCertificate: ""
+          trustPassword: ""
+      auditUserActivity: "YES"
+      auditAdminStoreActivity: "NO"
+      adminActivity: 1
+      enableAuthAuditing: 1
+      enableAzAuditing: 1
+      anonAuthAuditing: "NO"
+      anonAzAuditing: "NO"
+      affiliateAuditing: 0
+    sessionStore:
+      enabled: false
+      service: "SESSIONSTORE_HOST:PORT"
+      userPassword: ""
+      type: "odbc"
+      odbc:
+        DSN: "SESSIONSTORE_DSN"
+        type: "mysql"
+        databaseName: "SESSIONSTORE_DATABASE"
+        user: "SESSIONSTORE_USER"
+        oracle:
+          databaseServiceName: "SESSIONSTORE_ORACLE_SERVICE"
+        ssl:
+          enabled: false
+          trustStore: ""
+          hostNameInCertificate: ""
+          trustPassword: ""
+      ldap:
+        rootDN: "SESSIONSTORE_ROOTDN"
+        userDN: "SESSIONSTORE_USERDN"
+        ssl:
+          enabled: false
+  logging:
+    repository: siteminder.packages.broadcom.com/casso
+policyServer:
+  enabled: true
+  replicas: 1
+  annotations:
+    values: {prometheus.io/scrape: 'true', prometheus.io/port: '8088', prometheus.io/path: '/metricsexporter/resources/metrics'}
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 25%
+  hostAliases:
+    - ip: "192.168.1.10"
+      hostnames:
+        - "example.com"
+        - "www.example.com"
+  repository: siteminder.packages.broadcom.com/casso
+  image: policy-server
+  tag: 12.8.07.3100
+  resources:
+    requests:
+      cpu: 1000m
+      memory: 500Mi
+  initializationTimeout: 120
+  podTerminateGracePeriod: 60
+  rsaSecureId:
+    enabled: false
+    nodeSecretEncryptionPassword: ""
+  serviceNodePort:
+    psHealthProbe: 31333
+  aps: "NO"
+  enableSymantecAdvancedAuthenticationIntegration: "NO"
+  enableRadiusServer: "NO"
+  configuration:
+    source: "https://github.com/tc09-brcm-social/sm2022configr.git;skeleton"
+    gitFolderPath: "/deploy/policyserver"
+  runtimeConfiguration:
+    enabled: true
+    source: "https://github.com/tc09-brcm-social/sm2022configr.git;skeleton"
+    runtimeGitFolderPath: "/runtime/policyserver"
+  autoscaling:
+    enabled: false
+    type: "both"
+    replicasMin: 1
+    replicasMax: 10
+    cpuUtilization: 70
+    averageRequestQueueInUse: 15
+  metricsExporter:
+    enabled: false
+    resources:
+      requests:
+        cpu: 200m
+        memory: 200Mi
+    repository: siteminder.packages.broadcom.com/casso
+    image: metricsexporter
+    tag: 12.8.07.3100
+    livenessProbe:
+      initialDelaySeconds: 180
+      timeoutSeconds: 5
+    readinessProbe:
+      initialDelaySeconds: 30
+      periodSeconds: 5
+admin:
+  enabled: true
+  replicas: 1
+  hostAliases:
+    - ip: "192.168.1.10"
+      hostnames:
+        - "example.com"
+        - "www.example.com"
+  policyServer:
+    repository: siteminder.packages.broadcom.com/casso
+    image: policy-server
+    tag: 12.8.07.3100
+    resources:
+      requests:
+        cpu: 500m
+        memory: 500Mi
+    xpsSchemaUpgrade: "NO"
+    importDefaultCACertificates: "NO"
+    agentKeyGeneration:
+      enabled: true
+    keyUpdate:
+      enabled: true
+  adminUI:
+    repository: siteminder.packages.broadcom.com/casso
+    image: admin-ui
+    tag: 12.8.07.3100
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+    regMaxTimeoutSeconds: 300
+    livenessProbe:
+      initialDelaySeconds: 180
+      timeoutSeconds: 5
+      periodSeconds: 5
+      failureThreshold: 6
+    readinessProbe:
+      initialDelaySeconds: 40
+      timeoutSeconds: 3
+      periodSeconds: 5
+      failureThreshold: 6
+    customClientIPHeader: "x-forwarded-for"
+    externalAuth:
+      enabled: false
+      importFile: ""
+      type: "odbc"
+      odbc:
+        dataSourceName: "smadministrators"
+        odbcType: ""
+        serverName: ""
+        serverPort: ""
+        databaseName: ""
+        username: ""
+        userPassword: ""
+      ldap:
+        userPassword: ""
+    customKeyStore:
+      enabled: false
+      password: ""
+      aliasKey: "tomcat"
+  ingress:
+    className: "nginx"
+    hostName: ps2.demo-broadcom.com
+    servicePort: 8443
+    tlsCrt: "QmFnIEF0dHJpYnV0ZXMKICAgIGZyaWVuZGx5TmFtZTogazhzCiAgICBsb2NhbEtleUlEOiBENiAzMyBERCAzMSBFQiA5RiAxRSA1RiBGQyA3OSAzNiAzQSAzNCAyOCBFQyBEMSA5MyBBNiA2MCAxMiAKc3ViamVjdD1DTiA9ICouazhzLmRlbW8KCmlzc3Vlcj1DTiA9ICouazhzLmRlbW8KCi0tLS0tQkVHSU4gQ0VSVElGSUNBVEUtLS0tLQpNSUlEQ3pDQ0FmT2dBd0lCQWdJVUNkUDZwZVJONXpUVkpUZkxJU29SaWNQdGcxc3dEUVlKS29aSWh2Y05BUUVMCkJRQXdGVEVUTUJFR0ExVUVBd3dLS2k1ck9ITXVaR1Z0YnpBZUZ3MHlNakE1TWpNeE56TTFOREphRncwek1qQTUKTWpBeE56TTFOREphTUJVeEV6QVJCZ05WQkFNTUNpb3Vhemh6TG1SbGJXOHdnZ0VpTUEwR0NTcUdTSWIzRFFFQgpBUVVBQTRJQkR3QXdnZ0VLQW9JQkFRQ2lLYmh5MFBPQTlqeGVPQjI0WDZZTXdGSk9UTzd6eUJzR0hYV1BXT3R0Cit2QlNYOEpvSk1iSG9JSkNMV01ySndlZUZ6YndydlZacytZSUhuVjJoNHNEVGhmbEszWHNUOStranl5eTFTNTcKMURYekVhc3VQUHBGN1N6eDVUNXBDRURSbkZwYWF3cWtLTU1tUTQ1UXJCU0ZXcFFBMGdjbUd0bExXN2hrZUtraQpxbFB0TmlnaTFlOTNsa2dqUlBHb2QwWEJBNnpyd0syanpCWTAwNGJSeWlDSEFKaHFrcU02eE51YjZVN1FTY202CjY1M0NkNTA2YmtxZU9zY2JsTk1NaHFDc1JIWEtSZmg3U0pVS0pTVDNxV0VFYkxZRkJaTGVERElqV3lqb1ZRc20KZ0ZsUDkzQlFIRVpHODhQZEdsSkFpbVdjekNESi9VTXZFODFLS0JJWHFhQ1RBZ01CQUFHalV6QlJNQjBHQTFVZApEZ1FXQkJUV005MHg2NThlWC94NU5qbzBLT3pSazZaZ0VqQWZCZ05WSFNNRUdEQVdnQlRXTTkweDY1OGVYL3g1Ck5qbzBLT3pSazZaZ0VqQVBCZ05WSFJNQkFmOEVCVEFEQVFIL01BMEdDU3FHU0liM0RRRUJDd1VBQTRJQkFRQVgKTDZtd21VRlRlcEtDUTBucVdTNFZybTE0SmptNXJGWmZpRmh3eTJYNWhUK2JpclhRNWlQSFpyQ3hTbjJHYUVEQwpxeGhldjFJZStjTVhlZVRuY2g1OThhQjNpTjM3ZDZHQzc2a1hnS2QzbW8zSTZNTm9WZGdYL1FjbVQyRzFuSU55CjA2OE5tWEZEYVNWU2R2dXpyUGVmZ01KTnVmQ0VsOTc0c2NpMUhLOXMxeXlBRTk3Q3hkQVhUMHBIUkVXN0hwZlUKM3dyVjd5QVQ4VHlESzlBbklGVzFCTlNWYzQ4ZFQxN2tYcTlIUVpwY0hOczRsR0FZV3BKQmloR3Z6NTVSdjZwdQozWG91TTEwM3pIdEV5VWRUWTlPZnNhN1V3VTBObkxTUWJVUVlXcHNWRDV5SVZ0Y1JwaXlZNHpGa29naXZhWTRhClNXck83dlNFTklRWVpYaWZ4N0NjCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K"
+    tlsKey: "QmFnIEF0dHJpYnV0ZXMKICAgIGZyaWVuZGx5TmFtZTogazhzCiAgICBsb2NhbEtleUlEOiBENiAzMyBERCAzMSBFQiA5RiAxRSA1RiBGQyA3OSAzNiAzQSAzNCAyOCBFQyBEMSA5MyBBNiA2MCAxMiAKS2V5IEF0dHJpYnV0ZXM6IDxObyBBdHRyaWJ1dGVzPgotLS0tLUJFR0lOIFBSSVZBVEUgS0VZLS0tLS0KTUlJRXZ3SUJBREFOQmdrcWhraUc5dzBCQVFFRkFBU0NCS2t3Z2dTbEFnRUFBb0lCQVFDaUtiaHkwUE9BOWp4ZQpPQjI0WDZZTXdGSk9UTzd6eUJzR0hYV1BXT3R0K3ZCU1g4Sm9KTWJIb0lKQ0xXTXJKd2VlRnpid3J2VlpzK1lJCkhuVjJoNHNEVGhmbEszWHNUOStranl5eTFTNTcxRFh6RWFzdVBQcEY3U3p4NVQ1cENFRFJuRnBhYXdxa0tNTW0KUTQ1UXJCU0ZXcFFBMGdjbUd0bExXN2hrZUtraXFsUHROaWdpMWU5M2xrZ2pSUEdvZDBYQkE2enJ3SzJqekJZMAowNGJSeWlDSEFKaHFrcU02eE51YjZVN1FTY202NjUzQ2Q1MDZia3FlT3NjYmxOTU1ocUNzUkhYS1JmaDdTSlVLCkpTVDNxV0VFYkxZRkJaTGVERElqV3lqb1ZRc21nRmxQOTNCUUhFWkc4OFBkR2xKQWltV2N6Q0RKL1VNdkU4MUsKS0JJWHFhQ1RBZ01CQUFFQ2dnRUJBSjE1L0hmcmVIemxJcXl3dkJQZk51YXRJWUNPYjRKbjhlNVhUMkc4alN5SgpnelhMYm9RcUtxdVRzTXRKUGtPYXJHZ1d6VENnQnYxc21WZUxGTERkWWQ3OHlIR3hhZHZwbVJvNk84TVRDUWdSCmhhNmRtdW5WSjRvZWtBWDhoRVlGVU1UOW5EU3dQRzQ4YzM3R0hmOHpqTjRQbnlqSXpVNXd4bEhMS1Y3UVdoZWgKV3RIdkR5eEdPQ3FoMnFvcm94TnY3QlBUdDZOZUd4Y3ljVENIL2p2OGllM2RKUFhmNCt5V01Kd0phWXFuQnMzSQpPaFhWeXF2UDVhdDJmcnRQYkN3b3hSZ0tyTzdjc1ZFbUVmMHNXVmJTTThMOVVTeVhWK1l4WmwybmlhSE9FRWJ4CjdNYldyUS93eVZ5UXhPTEdyQVA2Q0NBMGRWTkFabERpS1FRRjRibjZJZmtDZ1lFQTB5NDlrV1MzeEROUGVDazIKN3NXYzB5MzJTRWJDdVgrRCtCOGxYa2dpM3NrRVN5OEdVbzRjRjJraTltS2EvZ0VvdHFTTWxTaDFESkJZQ2d0MAo0MEJzSXFQaHFxVUNIZ3R5TWQrN2pNZWNIcDF5VkRuS2FvSmtKdmYxejVvR21HQkpjUTE3RHVYY3RodVhaY0RCCkxQOHVuRXBqK3d0Y0loVUdmb2plb0dMNHRSOENnWUVBeEpSSEFvWEVGS3BNTUhCU1BCOEJQZXo5cHNidEkxYjgKaGJUeHArSlhTWHpibytSVmp2bmZuWllIUWRlYWRlWlBTVklHZG1jN0hLVjlueWd0cGJLVzRwdEZLaE96V0xLaQo4cWc0alFWT3BFcWhzZFFraVpveU1pN1QwZWExdERna0k4SzBDUTVCZVB5VlZ2REljWFV4QlBwTUNGRlNIa2p3Cml5akR0eGZyMGcwQ2dZRUFtR081MGYxWURxRG9LOUd4N2tOems0Q0xSRVNycDZnNDF3ZkNzM0ppbDFsL1c3R24KWWxOaU9oS0lSRHVMbE5mSlJXTWdmMUllaE41MGFXc3pBZm92RGlBc2JETitmNmZLMCtxYk1FK3FmUDBvejFhVQpscDlaSGpXNGtBS1oxOE5EdSt6NmJCbTdWejQ1MWhkdVRzWW1JR29lRTc1eTBiVlNabVRtSWQ3Smtna0NnWUFZCmlIVFFRTWQyMk1ZSGFZMHB5YWpMQksrblI3NUNvZEdFRWsveVp0SUQ3dHd1ZVFtZ2ZWakYvdnBLNGxCNWxGT2kKeitUVWxBK1JoS25IMmlqUVBCaU9rVmd4WnlJRDJNOXpQMEZIZ0RrUFVlMGFGMkt6OVpWOEk5SDFxVGhXRkllVwpHdStERGM5bi9RWGFRdFNSTEZJQTBBZjdKY0w4MnBlQ2xvVE9iZUxWWlFLQmdRQ25xMTA3TGJ1d29hYkQ2VHN1CkFzVkVCQURjaTU1SmZJT1BSNmlkQk9tdXF2ZXNLVTRpcjZ0d2loRjFwQTk5SGxQbDZkVG5rQ2swYWRYNUtyVXYKVFVqKzZoRnpiTXZCU3V2RmV4YitiU2tXTHpsZXlkSHd4cithZHZHc01icW51QlhsRUlwYlBNZ3U4UzFmeCtkOAo4U1hOUHFuTlczdy84MDcrSHVkTDY5QURiZz09Ci0tLS0tRU5EIFBSSVZBVEUgS0VZLS0tLS0K"
+    tlsSecret: casso.ca.local-tls
+  configuration:
+    source: "https://github.com/tc09-brcm-social/sm2022configr.git;skeleton"
+    gitFolderPath: "/deploy/admin"
+  runtimeConfiguration:
+    source: "https://github.com/tc09-brcm-social/sm2022configr.git;skeleton"
+    enabled: true
+    runtimeGitFolderPath: "/runtime/admin"
+maintenance:
+  enabled: false
+  operation:
+    name: "XPSExport"
+    args: "test.xml -xb -npass"
+    input_file: ""
+  job:
+    restartPolicy: Never
+    backOffLimit: 1
+nodeSelector: {}
+tolerations: []
+affinity: {}

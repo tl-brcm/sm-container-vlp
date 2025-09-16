@@ -1,0 +1,56 @@
+{{- if .Values.policyServer.enabled -}}
+## Policy Server Service
+kind: Service
+apiVersion: v1
+metadata:
+  name: {{ .Release.Name }}-siteminder-policy-server
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    description: "Service for the Policy Server"
+{{- if .Values.global.policyServerParams.service.annotations.enabled }}
+{{ toYaml .Values.global.policyServerParams.service.annotations.values | indent 4 }}
+{{- end }}
+  labels:
+    app: {{ template "fullname" . }}
+    release: {{ .Release.Name }}
+    app.kubernetes.io/name: {{ .Release.Name }}-siteminder-policy-server
+    app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+    app.kubernetes.io/component: policy-server
+    app.kubernetes.io/part-of: {{ template "fullname" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    {{- with .Values.additionalLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  type: {{ .Values.global.policyServerParams.service.type }}
+  ports:
+  - name: accnt
+    port: 44441
+    targetPort: 44441
+  - name: authn
+    port: 44442
+    targetPort: 44442
+  - name: az
+    port: 44443
+    targetPort: 44443
+  {{- if eq ((.Values.global.debugmode | default "NO" | lower )) "yes" }}
+  - name: ps-gdbserver
+    port: 4444
+    targetPort: 4444
+  - name: ps-javadebug
+    port: 9001 
+    targetPort: 9001 
+  {{- end }}
+  selector:
+      app: {{ template "fullname" . }}
+      release: {{ .Release.Name }}
+      ca.com/sso-pod: policy-server
+      ca.com/sso-role: policyserver
+      app.kubernetes.io/name: {{ .Release.Name }}-siteminder-policy-server
+      app.kubernetes.io/component: policy-server
+      app.kubernetes.io/part-of: {{ template "fullname" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- end }}

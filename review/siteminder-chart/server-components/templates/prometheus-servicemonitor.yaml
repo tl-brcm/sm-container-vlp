@@ -1,0 +1,30 @@
+{{- if .Values.policyServer.metricsExporter.enabled }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ .Release.Name }}-policy-server-services-metrics
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "fullname" . }}-servicemonitor
+    app.kubernetes.io/name: {{ .Release.Name }}-policy-server-servicemonitor
+    app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+    app.kubernetes.io/part-of: {{ template "fullname" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/component: policy-server
+    release: prometheus-operator
+spec:
+  selector:
+    matchLabels:
+      #app.kubernetes.io/instance: {{ .Release.Name }}
+      release: {{ .Release.Name }}
+  endpoints: 
+  - path: "/metricsexporter/resources/metrics"
+    interval: 30s
+    scheme: HTTP
+    targetPort: 8088
+    tlsConfig:
+      insecureSkipVerify: true
+      #caFile:
+{{- end }} 

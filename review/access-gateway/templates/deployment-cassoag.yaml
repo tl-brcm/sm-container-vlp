@@ -1,0 +1,506 @@
+## Access Gateway Deployment (includes Access Gateway container in the pod)
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: {{ .Release.Name }}-siteminder-access-gateway
+  namespace: {{ .Release.Namespace }}
+  labels:
+    # The "release" convention makes it easy to tie a release to all of the
+    # Kubernetes resources that were created as part of that release.
+    release: {{ .Release.Name }}
+    app: {{ template "fullname" . }}
+    app.kubernetes.io/name: {{ .Release.Name }}-siteminder-access-gateway
+    app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+    app.kubernetes.io/component: access-gateway
+    app.kubernetes.io/part-of: {{ template "fullname" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    {{- with .Values.additionalLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  replicas: {{ .Values.sso.accessGateway.replicas }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: {{ .Values.sso.accessGateway.rollingUpdate.maxSurge }}
+      maxUnavailable: {{ .Values.sso.accessGateway.rollingUpdate.maxUnavailable }}
+  selector:
+    matchLabels:
+      app: {{ template "fullname" . }}
+      release: {{ .Release.Name }}
+      ca.com/sso-pod: access-gateway
+      app.kubernetes.io/name: {{ .Release.Name }}-siteminder-access-gateway
+      app.kubernetes.io/component: access-gateway
+      app.kubernetes.io/part-of: {{ template "fullname" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/managed-by: {{ .Release.Service }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "fullname" . }}
+        release: {{ .Release.Name }}
+        ca.com/sso-pod: access-gateway
+        app.kubernetes.io/name: {{ .Release.Name }}-siteminder-access-gateway
+        app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+        app.kubernetes.io/component: access-gateway
+        app.kubernetes.io/part-of: {{ template "fullname" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/managed-by: {{ .Release.Service }}
+        helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+        {{- with .Values.additionalLabels }}
+        {{- toYaml . | nindent 4 }}
+        {{- end }}
+      annotations:
+{{ toYaml .Values.sso.accessGateway.annotations.values | indent 8 }}
+    spec:
+      securityContext:
+        runAsUser: {{ .Values.global.securityContext.runAsUser }}
+        runAsGroup: {{ .Values.global.securityContext.runAsGroup }}
+        fsGroup: {{ .Values.global.securityContext.fsGroup }}
+      {{- if .Values.global.existingServiceAccount }}
+      serviceAccountName: {{ .Values.global.existingServiceAccount }}
+      {{- end }}       
+      {{- if .Values.sso.accessGateway.hostAliases }}
+      hostAliases:
+{{ toYaml .Values.sso.accessGateway.hostAliases | indent 8 }}
+      {{- end }}
+      terminationGracePeriodSeconds: {{ .Values.global.podTerminateGracePeriod }}
+      initContainers:
+      {{- if .Values.sso.configuration.enabled }}
+      - name: config-retriever
+        image: {{ .Values.images.configuration.repository }}/{{ .Values.images.configuration.image }}:{{ .Values.images.configuration.tag }}
+        imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+        securityContext:
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false                      
+        {{ if and .Values.sso.configuration.type (eq .Values.sso.configuration.type "nfs") }}
+        securityContext:
+         capabilities:
+          add:
+           - SYS_ADMIN
+        {{ end }}
+        env:
+        - name: MASTERKEYSEED
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-siteminder-keycreds
+              key: masterKeySeed
+        - name: TYPE
+          value: {{ .Values.sso.configuration.type }}
+        - name: SOURCE
+          value: {{ .Values.sso.configuration.source }}
+        - name: POD_LABEL
+          value: "accessgateway"
+        {{ if and .Values.sso.configuration.type (eq .Values.sso.configuration.type "awsS3") }}
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-siteminder-{{ .Values.sso.configuration.aws.creds }}
+              key: awskeyid
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-siteminder-{{ .Values.sso.configuration.aws.creds }}
+              key: awssecretaccesskey
+        - name: AWS_DEFAULT_REGION
+          value: {{ .Values.sso.configuration.aws.region }}
+        {{ end }}
+        {{ if and .Values.sso.configuration.type (eq .Values.sso.configuration.type "git") }}
+        - name: OAUTH_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-siteminder-{{ .Values.sso.configuration.git.creds }}
+              key: githubAccessToken
+        - name: GIT_USERNAME
+          value: {{ .Values.sso.configuration.git.username }}
+        - name: GIT_FOLDERPATH
+          value: {{ .Values.sso.configuration.git.folderPath }}        
+        {{ end }}        
+        - name: DESTINATION
+          value: "/configuration"
+        - name: ACCEPT_LICENSE
+          value: "{{ .Values.global.acceptLicenseAgreement }}"
+        volumeMounts:
+        - name: access-gateway-config
+          mountPath: /configuration
+        {{ if and .Values.sso.configuration.type (eq .Values.sso.configuration.type "local") }}
+        - name: access-gateway-local-config
+          readOnly: true
+          mountPath: {{ .Values.sso.configuration.source }}
+        {{ end }}
+      {{ end }}
+      containers:
+      - name: access-gateway
+        image: {{ .Values.images.accessGateway.repository }}/{{ .Values.images.accessGateway.image }}:{{ .Values.images.accessGateway.tag }}
+        imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+        securityContext:
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false                       
+        terminationMessagePath: {{ .Values.global.terminationMessagePath }}
+        resources:
+          {{- toYaml .Values.sso.accessGateway.ag.resources | nindent 12 }}
+        livenessProbe:
+          httpGet:
+            path: /aghealthservice/status
+            port: 6080
+            scheme: HTTP
+            httpHeaders:
+            - name: Host
+              value: {{ .Values.sso.accessGateway.ingress.virtualHostname }}
+          initialDelaySeconds: {{ .Values.sso.accessGateway.livenessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.sso.accessGateway.livenessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.sso.accessGateway.livenessProbe.timeoutSeconds }}
+          failureThreshold: {{ .Values.sso.accessGateway.livenessProbe.failureThreshold }}
+        readinessProbe:
+          httpGet:
+            path: /aghealthservice/status
+            port: 6080
+            scheme: HTTP
+            httpHeaders:
+            - name: Host
+              value: {{ .Values.sso.accessGateway.ingress.virtualHostname }}
+          initialDelaySeconds: {{ .Values.sso.accessGateway.readinessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.sso.accessGateway.readinessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.sso.accessGateway.readinessProbe.timeoutSeconds }}
+          failureThreshold: {{ .Values.sso.accessGateway.readinessProbe.failureThreshold }}
+        lifecycle:
+          preStop:
+            exec:
+              # SIGTERM triggers a quick exit; gracefully terminate instead
+              command: ["/bin/bash", "-c", "/opt/CA/secure-proxy/proxy-engine/sps-ctl-container stop"]
+        env:
+        - name: ADMIN_REG_NAME
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-siteminder-{{ .Values.sso.accessGateway.regSecret.name }}
+              key: adminUsername
+        - name: ADMIN_REG_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-siteminder-{{ .Values.sso.accessGateway.regSecret.name }}
+              key: adminPassword
+        - name: CONTAINER_LABEL
+          value: "access-gateway"
+        - name: TERMINATION_MSG_PATH
+          value: "{{ .Values.global.terminationMessagePath}}"
+        - name: CONFIGURATION
+          value: "/configuration"
+        - name: ACCEPT_LICENSE
+          value: "{{ .Values.global.acceptLicenseAgreement }}"
+        - name: DEBUG_MODE
+          value: {{ .Values.global.debugmode | default "NO" | quote }} 
+        - name: MASTERKEYSEED
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-siteminder-keycreds
+              key: masterKeySeed
+        - name: DEPLOYMENT_FULLNAME
+          value: {{ template "fullname" . }}
+        - name: PUBLIC_HOST_NAME
+          value: "{{ .Values.sso.accessGateway.publicHostname }}"
+        - name: POLICY_SERVER_SERVICE
+          value: "{{ .Values.sso.policyServer.service }}"
+        - name: TRUSTED_HOST_NAME
+          value: "{{ .Values.sso.accessGateway.trustedHost }}"
+        - name: CA_ENABLE_SHARED_ROLLOVER
+        {{- if .Values.sso.accessGateway.enableSharedRollover }}
+          value: "YES"
+        {{- else }}
+          value: "NO"
+        {{- end }}
+        - name: AGENT_CONFIG_OBJ
+          value: "{{ .Values.sso.accessGateway.aco }}"
+        - name: HOST_CONFIG_OBJ
+          value: "{{ .Values.sso.accessGateway.hco }}"
+        - name: CA_SM_PS_FIPS140
+          value: "{{ .Values.sso.policyServer.fipsMode }}"
+        - name: APACHE_ADMIN_EMAIL
+          value: "{{ .Values.sso.accessGateway.apache.adminEmail }}"
+        - name: APACHE_TRACE_ENABLED
+        {{- if .Values.sso.accessGateway.apache.trace }}
+          value: "YES"
+        {{- else }}
+          value: "NO"
+        {{- end }}
+        - name: VIRTUAL_HOST_NAMES
+          value: "{{ .Values.sso.accessGateway.virtualHostnames }}"
+        - name: ENABLE_WEB_AGENT
+        {{- if .Values.sso.accessGateway.enableAgent }}
+          value: "YES"
+        {{- else }}
+          value: "NO"
+        {{- end }}
+        - name: ENABLE_AGENT_TRACE
+        {{- if .Values.sso.accessGateway.agentTrace.enabled }}
+          value: "YES"
+        {{- else }}
+          value: "NO"
+        {{- end }}
+        - name: ENABLE_AUTHAZWS
+        {{- if .Values.sso.accessGateway.authaz.enabled }}
+          value: "YES"
+        {{- else }}
+          value: "NO"
+        {{- end }}
+        - name: AUTHAZ_ACO_NAME
+          value: "{{ .Values.sso.accessGateway.authaz.acoName }}"
+        - name: AUTHAZ_HOST_NAME
+          value: "{{ .Values.sso.accessGateway.authaz.hostName }}"
+        - name: ENABLE_AUTHAZWS_LOG
+        {{- if .Values.sso.accessGateway.authaz.log.enabled }}
+          value: "YES"
+        {{- else }}
+          value: "NO"
+        {{- end }}
+        - name: ENABLE_FED_GATEWAY
+        {{- if .Values.sso.accessGateway.federationGateway.enabled }}
+          value: "YES"
+        {{- else }}
+          value: "NO"
+        {{- end }} 
+        - name: ENABLE_FED_GATEWAY_TRACE
+        {{- if  .Values.sso.accessGateway.federationGateway.trace.enabled }}
+          value: "YES"
+        {{- else }}
+          value: "NO"
+        {{- end }}
+        - name: ENABLE_APACHE_SSL
+        {{- if  .Values.sso.accessGateway.apache.ssl.enabled }}
+          value: "YES"
+        {{- else }}
+          value: "NO"
+        {{- end }}
+        {{- if  .Values.sso.accessGateway.apache.ssl.enabled }}
+        - name: APACHE_SSL_CERT_FILE
+          value: "{{ .Values.sso.accessGateway.apache.ssl.certFile }}"
+        - name: APACHE_SSL_KEY_FILE
+          value: "{{ .Values.sso.accessGateway.apache.ssl.keyFile }}"
+        - name: APACHE_SSL_CA_FILE
+          value: "{{ .Values.sso.accessGateway.apache.ssl.caFile }}"
+        - name: APACHE_SSL_VERIFY_TYPE
+          value: "{{ .Values.sso.accessGateway.apache.ssl.verifyType }}"
+        - name: APACHE_SSL_VERIFY_DEPTH
+          value: "{{ .Values.sso.accessGateway.apache.ssl.verifyDepth }}"
+        - name: APACHE_KEY_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-siteminder-{{ .Values.sso.accessGateway.apache.ssl.creds }}
+              key: keypwd
+        {{ end }}
+        - name: ENABLE_NOODLE_CLIENT_CERT
+        {{- if .Values.sso.accessGateway.noodle.ssl.enabled }}
+          value: "YES"
+        {{- else }}
+          value: "NO"
+        {{- end }}
+        {{- if .Values.sso.accessGateway.noodle.ssl.enabled }}
+        - name: NOODLE_SSL_CLIENT_KEY
+          value: "{{ .Values.sso.accessGateway.noodle.ssl.clientKey }}"
+        - name: NOODLE_SSL_CLIENT_PASSPHRASE
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-siteminder-{{ .Values.sso.accessGateway.noodle.ssl.creds }}
+              key: clientpassphrase
+        {{ end }}
+        - name: CUSTOM_METRICS_ENABLED
+        {{- if .Values.sso.accessGateway.ag.metricsExporter.enabled }}
+          value: "YES"
+        {{- else }}
+          value: "NO"
+        {{- end }}
+        - name: RUNTIMECONFIG_ENABLE
+        {{- if .Values.sso.runtime.configuration.enabled }}
+          value: "YES"
+        {{- else }}
+          value: "NO"
+        {{- end }}
+        {{- if .Values.sso.accessGateway.troubleshootingData.enabled }}
+        - name: TROUBLESHOOT_DATA_STORAGE_TYPE
+          value: "{{ .Values.sso.accessGateway.troubleshootingData.storageType }}"
+        - name: ARCHIVE_FILES
+          value: {{- range .Values.sso.accessGateway.troubleshootingData.archiveFiles }} {{ . }}, {{- end }}
+        {{- if eq .Values.sso.accessGateway.troubleshootingData.storageType "awsS3" }}
+        - name: TROUBLESHOOT_DATA_AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-siteminder-{{ .Values.sso.accessGateway.troubleshootingData.creds }}
+              key: agTroubleshootDataAwsAccessKeyId
+        - name: TROUBLESHOOT_DATA_AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-siteminder-{{ .Values.sso.accessGateway.troubleshootingData.creds }}
+              key: agTroubleshootDataAwsSecretAccessKey
+        - name: TROUBLESHOOT_DATA_AWS_DEFAULT_REGION
+          value: {{ .Values.sso.accessGateway.troubleshootingData.aws.region }}
+        - name: AWS_BUCKET_NAME
+          value: {{ .Values.sso.accessGateway.troubleshootingData.aws.bucketName }}
+        {{- end }}
+        {{- if eq .Values.sso.accessGateway.troubleshootingData.storageType "azureFileShares" }}
+        - name: TROUBLESHOOT_DATA_AZURE_SAS_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-siteminder-{{ .Values.sso.accessGateway.troubleshootingData.creds }}
+              key: agTroubleshootDataAzureSASToken
+        - name: AZURE_FILE_ENDPOINT
+          value: {{ .Values.sso.accessGateway.troubleshootingData.azure.fileEndpoint }}
+        - name: AZURE_FILESHARE_NAME
+          value: {{ .Values.sso.accessGateway.troubleshootingData.azure.fileShareName }}
+        - name: AZURE_SHARE_DIR_PATH
+          value: {{ .Values.sso.accessGateway.troubleshootingData.azure.directoryPath }}
+        {{- end }}
+        {{- end }}
+        ports:
+        # Access Gateway ports
+        -  containerPort: 6080
+        -  containerPort: 6443
+        volumeMounts:
+        - name: access-gateway-config
+          mountPath: /configuration
+        {{- if and .Values.sso.runtime.configuration.enabled }}
+        - name: access-gateway-runtime-config
+          mountPath: /runtimeConfig
+        {{ end }}
+        - name: corefile-config
+          mountPath: {{ .Values.sso.accessGateway.corePath }}
+      {{- if and .Values.sso.runtime.configuration.enabled }}
+      - name: runtime-config-retriever
+        image: {{ .Values.images.runtime.configuration.repository }}/{{ .Values.images.runtime.configuration.image }}:{{ .Values.images.runtime.configuration.tag }}
+        imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+        securityContext:
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false                  
+        resources:
+          {{- toYaml .Values.sso.runtime.resources | nindent 12 }}
+        {{ if and .Values.sso.runtime.configuration.type (eq .Values.sso.runtime.configuration.type "nfs") }}
+        securityContext:
+         capabilities:
+          add:
+           - SYS_ADMIN
+        {{ end }}
+        env:
+        - name: MASTERKEYSEED
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-siteminder-keycreds
+              key: masterKeySeed
+        - name: RUNTIMETYPE
+          value: {{ .Values.sso.runtime.configuration.type }}
+        - name: RUNTIMESOURCE
+          value: {{ .Values.sso.runtime.configuration.source }}
+        - name: POD_LABEL
+          value: "accessgateway"
+        - name: RUNTIMEINTERVAL
+          value: "{{ .Values.sso.runtime.configuration.interval }}"
+        {{ if and .Values.sso.runtime.configuration.type (eq .Values.sso.runtime.configuration.type "awsS3") }}
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-siteminder-{{ .Values.sso.runtime.configuration.aws.creds }}
+              key: runtimeawskeyid
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-siteminder-{{ .Values.sso.runtime.configuration.aws.creds }}
+              key: runtimeawssecretaccesskey
+        - name: AWS_DEFAULT_REGION
+          value: {{ .Values.sso.runtime.configuration.aws.region }}
+        {{ end }}
+        {{ if and .Values.sso.runtime.configuration.type (eq .Values.sso.runtime.configuration.type "git") }}
+        - name: OAUTH_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-siteminder-{{ .Values.sso.runtime.configuration.git.creds }}
+              key: gitRuntimeAccessToken
+        - name: GIT_USERNAME
+          value: {{ .Values.sso.runtime.configuration.git.username }}
+        - name: GIT_FOLDERPATH
+          value: {{ .Values.sso.runtime.configuration.git.folderPath }}
+        {{ end }}        
+        volumeMounts:
+        - name: access-gateway-runtime-config
+          mountPath: /runtimeConfig
+        {{ if and .Values.sso.runtime.configuration.type (eq .Values.sso.runtime.configuration.type "local") }}
+        - name: access-gateway-runtime-local-config
+          readOnly: true
+          mountPath: {{ .Values.sso.runtime.configuration.source }}
+        {{ end }}
+      {{ end }}
+      {{ if .Values.sso.accessGateway.ag.metricsExporter.enabled }}
+      - name: agmetricsexporter
+        image: {{ .Values.images.metricsExporter.repository }}/{{ .Values.images.metricsExporter.image }}:{{ .Values.images.metricsExporter.tag }}
+        securityContext:
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false                  
+        resources:
+          {{- toYaml .Values.sso.metricsExporter.resources | nindent 12 }}
+        livenessProbe:
+          exec:
+            command: ["/bin/sh", "-c", "/scripts/metricsExporter-health-check.sh"]
+          initialDelaySeconds: {{ .Values.sso.metricsExporter.livenessProbe.initialDelaySeconds }}
+          timeoutSeconds: {{ .Values.sso.metricsExporter.livenessProbe.timeoutSeconds }}
+        readinessProbe:
+          exec:
+            command: ["/bin/sh", "-c", "/scripts/metricsExporter-health-check.sh"]
+          initialDelaySeconds: {{ .Values.sso.metricsExporter.readinessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.sso.metricsExporter.readinessProbe.periodSeconds }}
+        env:
+        - name: CONTAINER_TOMCAT_HTTP_PORT
+          value: "9090"
+        ports:
+        - containerPort: 9090
+        volumeMounts:
+        - name: agmetricsexporter-health-check
+          mountPath: /scripts
+        - name: corefile-config
+          mountPath: {{ .Values.sso.accessGateway.corePath }}
+      {{ end }}
+      {{- if .Values.global.registry.existingSecrets }}
+      imagePullSecrets:
+      {{- toYaml .Values.global.registry.existingSecrets | nindent 6 }}
+      {{- else if .Values.global.registry.credentials.username }}
+      imagePullSecrets:
+      - name: {{ .Release.Name }}-siteminder-registry-key
+      {{- end }}
+      dnsPolicy: {{ .Values.global.dnsPolicy }}
+      restartPolicy: {{ .Values.global.restartPolicy }}
+      volumes:
+      - name: access-gateway-config
+        emptyDir: {}
+      {{- if and .Values.sso.runtime.configuration.enabled }}
+      - name: access-gateway-runtime-config
+        emptyDir: {}
+      {{ end }}
+      {{- if .Values.sso.configuration.enabled }}
+      {{ if and .Values.sso.configuration.type (eq .Values.sso.configuration.type "local") }}
+      - name: access-gateway-local-config
+        hostPath:
+           path: {{ .Values.sso.configuration.source }}
+      {{ end }}
+      {{ end }}
+      {{- if and .Values.sso.runtime.configuration.enabled }}
+      {{ if and .Values.sso.runtime.configuration.type (eq .Values.sso.runtime.configuration.type "local") }}
+      - name: access-gateway-runtime-local-config
+        hostPath:
+           path: {{ .Values.sso.runtime.configuration.source }}
+      {{ end }}
+      {{ end }}
+      - name: agmetricsexporter-health-check
+        configMap:
+          name: {{ .Release.Name }}-siteminder-agmetricsexporter-healthcheck
+          defaultMode: 0777
+      - name: corefile-config
+        emptyDir: {}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}

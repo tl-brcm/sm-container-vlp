@@ -1,0 +1,47 @@
+{{- if and (.Values.policyServer.enabled ) ( .Values.policyServer.autoscaling.enabled ) }}
+
+# Ensure there is at least one Policy Server, limit to a maximum of 100 Policy Servers and provide CPU metrics for monitoring purposes
+kind: HorizontalPodAutoscaler
+apiVersion: autoscaling/v2
+metadata:
+  name: {{ .Release.Name }}-siteminder-policy-server
+  namespace: {{ .Release.Namespace }}
+  labels:
+    release: {{ .Release.Name }}
+    app: {{ template "fullname" . }}
+    app.kubernetes.io/name: {{ .Release.Name }}-siteminder-policy-server
+    app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+    app.kubernetes.io/component: policy-server
+    app.kubernetes.io/part-of: {{ template "fullname" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    {{- with .Values.additionalLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  scaleTargetRef:
+    kind: Deployment
+    apiVersion: apps/v1
+    name: {{ .Release.Name }}-siteminder-policy-server
+  minReplicas: {{ .Values.policyServer.autoscaling.replicasMin }}
+  maxReplicas: {{ .Values.policyServer.autoscaling.replicasMax }}
+  metrics:
+{{- if or (eq (.Values.policyServer.autoscaling.type) "custom") (eq (.Values.policyServer.autoscaling.type) "both") }}
+  - type: Pods
+    pods:
+      metric:
+        name: "policyserver_request_queue_in_use"
+      target:
+        type: AverageValue
+        averageValue: {{ .Values.policyServer.autoscaling.averageRequestQueueInUse }}
+{{- end }}
+{{- if or (eq (.Values.policyServer.autoscaling.type) "cpu") (eq (.Values.policyServer.autoscaling.type) "both") }}
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: {{ .Values.policyServer.autoscaling.cpuUtilization }}
+{{- end }}
+{{- end }}

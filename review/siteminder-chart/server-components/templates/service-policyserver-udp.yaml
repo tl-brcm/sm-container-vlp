@@ -1,0 +1,44 @@
+{{- if and (.Values.policyServer.enabled ) (eq (( .Values.policyServer.enableRadiusServer|upper )) "YES") }}
+## Policy Server Service for UDP
+kind: Service
+apiVersion: v1
+metadata:
+  name: {{ .Release.Name }}-siteminder-policy-server-udp
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    description: "UDP Service for the Policy Server"
+  labels:
+    app: {{ template "fullname" . }}
+    release: {{ .Release.Name }}
+    app.kubernetes.io/name: {{ .Release.Name }}-siteminder-policy-server
+    app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+    app.kubernetes.io/component: policy-server
+    app.kubernetes.io/part-of: {{ template "fullname" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    {{- with .Values.additionalLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  type: {{ .Values.global.policyServerParams.service.type }}
+  ports:
+  - name: radiusauthport
+    port: 1645
+    targetPort: 1645
+    protocol: UDP
+  - name: radiusacctport
+    port: 1646
+    targetPort: 1646
+    protocol: UDP
+  selector:
+      app: {{ template "fullname" . }}
+      release: {{ .Release.Name }}
+      ca.com/sso-pod: policy-server
+      ca.com/sso-role: policyserver
+      app.kubernetes.io/name: {{ .Release.Name }}-siteminder-policy-server
+      app.kubernetes.io/component: policy-server
+      app.kubernetes.io/part-of: {{ template "fullname" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- end }}

@@ -1,0 +1,5 @@
+apiVersion: v2
+appVersion: 2.1.5+1047
+description: Release 2.1.5 - Helm chart to deploy a Demo ID Store (ca directory)
+name: ssp-symantec-dir
+version: 2.1.5+1047

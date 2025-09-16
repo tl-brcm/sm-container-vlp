@@ -1,0 +1,27 @@
+Thank you for installing {{ .Chart.Name }}.
+
+The admin user connecting to the Directory is: cn=admin,{{ .Values.dsaConfig.baseDN }}
+To retreive the password of the admin user use:
+  kubectl get secret --namespace {{ .Release.Namespace }} {{ template "fullname" . }}-admin -o jsonpath="{.data.adminPassword}" | base64 --decode; echo
+{{- if .Values.dsaConfig.tls.enabled }}
+To retreive the CA certificate so that it can be imported to ssp in order to connect using ldaps use:
+  kubectl get secret --namespace {{ .Release.Namespace }} {{ template "fullname" . }}-tls -o jsonpath={.data."ca\.crt"}| base64 --decode| openssl x509  -outform DER | openssl enc -base64 -A
+{{- end }}
+
+Get the Directory Host and Port by running these commands {{ if .Values.dsaConfig.tls.enabled }}(Note that you can use the same port for ldap and ldaps){{ end }}:
+{{- if contains "NodePort" .Values.service.type }}
+  export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "fullname" . }})
+  export NODE_IP=$(kubectl get nodes -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo Connect to ldap using the IP Address: $NODE_IP and port $NODE_PORT
+{{- else if contains "LoadBalancer" .Values.service.type }}
+     NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+           You can watch the status of by running 'kubectl get --namespace {{ .Release.Namespace }} svc -w {{ include "fullname" . }}'
+  export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ template "fullname" . }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+  echo Connect to ldap using the IP Address: $SERVICE_IP and port {{ .Values.service.servicePort }}
+{{- else if contains "ClusterIP" .Values.service.type }}
+  export POD_NAME=$(kubectl get pods --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ template "name" . }},app.kubernetes.io/instance={{ .Release.Name }}" -o jsonpath="{.items[0].metadata.name}")
+  kubectl port-forward $POD_NAME {{ .Values.service.servicePort }}:{{ .Values.service.servicePort }}
+  echo "Then connect to ldap using the IP Address 127.0.0.1 port {{ .Values.service.servicePort }}"
+{{- end }}
+
+

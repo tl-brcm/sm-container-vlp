@@ -1,0 +1,859 @@
+{{- if .Values.policyServer.enabled }}
+## Policy Server Deployment (includes Policy Server and config-retreiver containers in the pod)
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: {{ .Release.Name }}-siteminder-policy-server
+  namespace: {{ .Release.Namespace }}
+  labels:
+    release: {{ .Release.Name }}
+    app: {{ template "fullname" . }}
+    app.kubernetes.io/name: {{ .Release.Name }}-siteminder-policy-server
+    app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+    app.kubernetes.io/component: policy-server
+    app.kubernetes.io/part-of: {{ template "fullname" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    {{- with .Values.additionalLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  replicas: {{ .Values.policyServer.replicas }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: {{ .Values.policyServer.rollingUpdate.maxSurge }}
+      maxUnavailable: {{ .Values.policyServer.rollingUpdate.maxUnavailable }}
+  selector:
+    matchLabels:
+      app: {{ template "fullname" . }}
+      release: {{ .Release.Name }}
+      ca.com/sso-pod: policy-server
+      ca.com/sso-role: policyserver
+      app.kubernetes.io/name: {{ .Release.Name }}-siteminder-policy-server
+      app.kubernetes.io/component: policy-server
+      app.kubernetes.io/part-of: {{ template "fullname" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/managed-by: {{ .Release.Service }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "fullname" . }}
+        release: {{ .Release.Name }}
+        ca.com/sso-pod: policy-server
+        ca.com/sso-role: policyserver
+        app.kubernetes.io/name: {{ .Release.Name }}-siteminder-policy-server
+        app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+        app.kubernetes.io/component: policy-server
+        app.kubernetes.io/part-of: {{ template "fullname" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/managed-by: {{ .Release.Service }}
+        helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+        {{- with .Values.additionalLabels }}
+        {{- toYaml . | nindent 4 }}
+        {{- end }}
+      annotations:
+{{ toYaml .Values.policyServer.annotations.values | indent 8 }}
+    spec:
+      {{- if .Values.global.existingServiceAccount }}
+      serviceAccountName: {{ .Values.global.existingServiceAccount }}
+      {{- end }}
+      securityContext:
+        runAsUser: {{ .Values.global.securityContext.runAsUser }}
+        runAsGroup: {{ .Values.global.securityContext.runAsGroup }}
+        fsGroup: {{ .Values.global.securityContext.fsGroup }}
+      {{- if .Values.policyServer.hostAliases }}
+      hostAliases:
+{{ toYaml .Values.policyServer.hostAliases | indent 8 }}
+      {{- end }}
+      terminationGracePeriodSeconds: {{ .Values.policyServer.podTerminateGracePeriod }}
+      initContainers:
+      {{- if .Values.global.configuration.enabled }}
+      - name: config-retriever
+        image: {{ .Values.global.configuration.repository }}/{{ .Values.global.configuration.image }}:{{ .Values.global.configuration.tag }}
+        imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+        securityContext:
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false                       
+        {{- if eq .Values.global.configuration.type "nfs" }}
+        securityContext:
+          capabilities:
+            add:
+              - SYS_ADMIN
+        {{- end }}
+        env:
+        - name: TYPE
+          value: {{ .Values.global.configuration.type }}
+        - name: SOURCE
+          value: {{ .Values.policyServer.configuration.source }}
+        - name: POD_LABEL
+          value: "policyserver"
+        - name: DESTINATION
+          value: "/configuration"
+        - name: MASTERKEYSEED
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-siteminder
+              key: masterKeySeed
+        {{- if eq .Values.global.configuration.type "git" }}
+        - name: OAUTH_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-siteminder
+              key: githubAccessToken
+        - name: GIT_USERNAME
+          value: "{{ .Values.global.configuration.git.username }}"
+        - name: GIT_FOLDERPATH
+          value: {{ .Values.policyServer.configuration.gitFolderPath }}
+        {{- end }}
+        {{- if eq .Values.global.configuration.type "awsS3" }}
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-siteminder
+              key: awsAccessKeyId
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-siteminder
+              key: awsSecretAccessKey
+        - name: AWS_DEFAULT_REGION
+          value: {{ .Values.global.configuration.aws.region }}
+        {{- end }}
+        - name: ACCEPT_LICENSE
+          value: "{{ .Values.global.acceptLicenseAgreement }}"
+        volumeMounts:
+        - name: policy-server-config
+          mountPath: /configuration
+        {{- if eq .Values.global.configuration.type "local" }}
+        - name: policy-server-local-config
+          readOnly: true
+          mountPath: {{ .Values.policyServer.configuration.source }}
+        {{- end }}
+      {{- end }}
+      - name: policy-server-init
+        image: {{ .Values.policyServer.repository }}/{{ .Values.policyServer.image }}:{{ .Values.policyServer.tag }}
+        imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+        securityContext:
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false                       
+        terminationMessagePath: {{ .Values.global.terminationMessagePath }}
+        env:
+        - name: CONTAINER_LABEL
+          value: "policy-server"
+        - name: POLICY_SERVER_INIT_TIMEOUT
+          value: "{{ .Values.policyServer.initializationTimeout | int }}"
+        - name: TERMINATION_MSG_PATH
+          value: {{ .Values.global.terminationMessagePath }}
+        - name: POLICY_SERVER_INIT_ENABLED
+          value: "YES"
+        - name: MASTERKEYSEED
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-siteminder
+              key: masterKeySeed
+        - name: ROLE
+          value: "policyserver-init-check"
+        - name: CONFIGURATION
+          value: "/configuration"
+        - name: ACCEPT_LICENSE
+          value: "{{ .Values.global.acceptLicenseAgreement }}"
+        - name: DEPLOYMENT_FULLNAME
+          value: {{ template "fullname" . }}
+        - name: CA_SM_PS_FIPS140
+          value: "{{ .Values.global.fipsMode }}"
+        - name: CERT_ATTRIBUTES_ROOTCA_CERT
+          value: {{ .Values.global.policyServerParams.certUtil.trustAttributes.rootCA }}
+        - name: CERT_ATTRIBUTES_SERVER_CERT
+          value: {{ .Values.global.policyServerParams.certUtil.trustAttributes.server }}
+        - name: POLICY_STORE_ENCRYPTION_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-siteminder
+              key: policyStoreEncryptionKey
+        - name: POLICY_STORE_TYPE
+          # External Policy Store may be of type LDAP or ODBC
+          value: "{{ .Values.global.policyStore.type }}"
+        - name: POLICY_STORE_LDAP_TYPE
+          # Store Type can be CADIR, ADLDS
+          value: "{{ .Values.global.policyStore.ldap.type }}"
+        - name: POLICY_STORE_ODBC_TYPE
+          # External Policy Store may be of type MYSQL or ORACLE
+          value: "{{ .Values.global.policyStore.odbc.type }}"
+        - name: POLICY_STORE_SERVICE
+          value: "{{ .Values.global.policyStore.service }}"
+          # For the admin policy store, pass in the DNS extension and allow the entrypoint.sh script to prefix the stateful set hostname
+        - name: POLICY_STORE_ROOT_DN
+          value: "{{ .Values.global.policyStore.ldap.rootDN }}"
+        - name: POLICY_STORE_USER_DN
+          value: "{{ .Values.global.policyStore.ldap.userDN }}"
+        - name: POLICY_STORE_USER
+          value: "{{ .Values.global.policyStore.odbc.user }}"
+        - name: POLICY_STORE_DSN
+          value: "{{ .Values.global.policyStore.odbc.DSN }}"
+        - name: DATABASE_NAME
+          value: "{{ .Values.global.policyStore.odbc.databaseName }}"
+        - name: DATABASE_SERVICE_NAME
+          # In case store odbc type is ORACLE
+          value: "{{ .Values.global.policyStore.odbc.oracle.databaseServiceName }}"
+        - name: POLICY_STORE_USER_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-siteminder
+              key: policyStoreUserPassword
+        - name: POLICY_STORE_SSL_ENABLED
+          {{- if eq (( .Values.global.policyStore.type|lower )) "odbc" }}
+          {{- if .Values.global.policyStore.odbc.ssl.enabled }}
+          value: "YES"
+          {{- else }}
+          value: "NO"
+          {{- end }}
+          {{- else }}
+          {{- if .Values.global.policyStore.ldap.ssl.enabled }}
+          value: "YES"
+          {{- else }}
+          value: "NO"
+          {{- end }}
+          {{- end }}
+        - name: POLICY_STORE_SSL_TRUSTSTORE
+          value: "{{ .Values.global.policyStore.odbc.ssl.trustStore }}"
+        - name: POLICY_STORE_SSL_HOSTNAMEINCERTIFICATE
+          value: "{{ .Values.global.policyStore.odbc.ssl.hostNameInCertificate }}"
+        - name: POLICY_STORE_SSL_TRUSTPWD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-siteminder
+              key: policyStoreODBCtrustStorePassword
+        # In case any LDAP store is SSL enabled
+        - name: LDAP_SSL_NSSDB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-siteminder
+              key: ldapSSLNSSDBPassword
+        - name: POLICY_SERVER_SERVICE
+          value: {{ template "fullname" . }}-policy-server
+        volumeMounts:
+        - name: policy-server-config
+          mountPath: /configuration
+        - name: health-check
+          mountPath: /scripts
+      containers:
+      - name: policy-server
+        image: {{ .Values.policyServer.repository }}/{{ .Values.policyServer.image }}:{{ .Values.policyServer.tag }}
+        imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+        securityContext:
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false                        
+        terminationMessagePath: {{ .Values.global.terminationMessagePath }}
+        resources:
+          {{- toYaml .Values.policyServer.resources | nindent 12 }}
+        env:
+        - name: CONTAINER_LABEL
+          value: "policy-server"
+        - name: TERMINATION_MSG_PATH
+          value: {{ .Values.global.terminationMessagePath }}
+        - name: MASTERKEYSEED
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-siteminder
+              key: masterKeySeed
+        - name: RUNTIMECONFIG_ENABLE
+          {{- if .Values.policyServer.runtimeConfiguration.enabled }}
+          value: "YES"
+          {{- else }}
+          value: "NO"
+          {{- end }}
+        - name: ROLE
+          value: "policyserver"
+        - name: CONFIGURATION
+          value: "/configuration"
+        - name: DEPLOYMENT_FULLNAME
+          value: {{ template "fullname" . }}
+        - name: ACCEPT_LICENSE
+          value: "{{ .Values.global.acceptLicenseAgreement }}"
+        - name: DEBUG_MODE
+          value: {{ .Values.global.debugmode | default "NO" | quote }} 
+        - name: CA_SM_PS_FIPS140
+          value: "{{ .Values.global.fipsMode }}"
+        - name: POLICY_STORE_ENCRYPTION_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-siteminder
+              key: policyStoreEncryptionKey
+        - name: SUPERUSER_NAME
+          value: "siteminder"
+        - name: SUPERUSER_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-siteminder
+              key: superuserPassword
+        - name: POLICY_STORE_TYPE
+          # External Policy Store may be of type LDAP or ODBC
+          value: "{{ .Values.global.policyStore.type }}"
+        - name: POLICY_STORE_LDAP_TYPE
+          # Store Type can be ODS, CADIR, ADLDS
+          value: "{{ .Values.global.policyStore.ldap.type }}"
+        - name: POLICY_STORE_ODBC_TYPE
+          # External Policy Store may be of type MYSQL or ORACLE
+          value: "{{ .Values.global.policyStore.odbc.type }}"
+        - name: POLICY_STORE_SERVICE
+          value: "{{ .Values.global.policyStore.service }}"
+          # For the admin policy store, pass in the DNS extension and allow the entrypoint.sh script to prefix the stateful set hostname
+        - name: POLICY_STORE_ROOT_DN
+          value: "{{ .Values.global.policyStore.ldap.rootDN }}"
+        - name: POLICY_STORE_USER_DN
+          value: "{{ .Values.global.policyStore.ldap.userDN }}"
+        - name: POLICY_STORE_USER
+          value: "{{ .Values.global.policyStore.odbc.user }}"
+        - name: POLICY_STORE_DSN
+          value: "{{ .Values.global.policyStore.odbc.DSN }}"
+        - name: DATABASE_NAME
+          value: "{{ .Values.global.policyStore.odbc.databaseName }}"
+        - name: DATABASE_SERVICE_NAME
+          # In case store odbc type is ORACLE
+          value: "{{ .Values.global.policyStore.odbc.oracle.databaseServiceName }}"
+        - name: POLICY_STORE_USER_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-siteminder
+              key: policyStoreUserPassword
+        - name: POLICY_STORE_SSL_TRUSTSTORE
+          value: "{{ .Values.global.policyStore.odbc.ssl.trustStore }}"
+        - name: POLICY_STORE_SSL_HOSTNAMEINCERTIFICATE
+          value: "{{ .Values.global.policyStore.odbc.ssl.hostNameInCertificate }}"
+        - name: POLICY_STORE_SSL_TRUSTPWD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-siteminder
+              key: policyStoreODBCtrustStorePassword
+        - name: POLICY_STORE_SSL_ENABLED
+          {{- if eq (( .Values.global.policyStore.type|lower )) "odbc" }}
+          {{- if .Values.global.policyStore.odbc.ssl.enabled }}
+          value: "YES"
+          {{- else }}
+          value: "NO"
+          {{- end }}
+          {{- else }}
+          {{- if .Values.global.policyStore.ldap.ssl.enabled }}
+          value: "YES"
+          {{- else }}
+          value: "NO"
+          {{- end }}
+          {{- end }}
+        - name: POLICY_SERVER_INIT_TIMEOUT
+          value: "{{ .Values.policyServer.initializationTimeout | int }}"
+        - name: KEY_STORE_EMBEDDED
+          value: "{{ .Values.global.stores.keyStore.embedded }}"
+          #incase key store is not same as policy store.
+        - name: KEY_STORE_TYPE
+          value: "{{ .Values.global.stores.keyStore.type }}"
+        - name: KEY_STORE_LDAP_TYPE
+          # Store Type can be ODS, CADIR, ADLDS
+          value: "{{ .Values.global.stores.keyStore.ldap.type }}"
+        - name: KEY_STORE_ODBC_TYPE
+          value: "{{ .Values.global.stores.keyStore.odbc.type }}"
+        - name: KEY_STORE_SERVICE
+          value: "{{ .Values.global.stores.keyStore.service }}"
+          # For the admin key store, pass in the DNS extension and allow the entrypoint.sh script to prefix the stateful set hostname
+        - name: KEY_STORE_ROOT_DN
+          value: "{{ .Values.global.stores.keyStore.ldap.rootDN }}"
+        - name: KEY_STORE_USER_DN
+          value: "{{ .Values.global.stores.keyStore.ldap.userDN }}"
+        - name: KEY_STORE_USER
+          value: "{{ .Values.global.stores.keyStore.odbc.user }}"
+        - name: KEY_STORE_DSN
+          value: "{{ .Values.global.stores.keyStore.odbc.DSN }}"
+        - name: KEY_STORE_DATABASE_NAME
+          value: "{{ .Values.global.stores.keyStore.odbc.databaseName }}"
+        - name: KEY_STORE_DATABASE_SERVICE_NAME
+          # In case store odbc type is ORACLE
+          value: "{{ .Values.global.stores.keyStore.odbc.oracle.databaseServiceName }}"
+        - name: KEY_STORE_USER_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-siteminder
+              key: keyStoreUserPassword
+        - name: KEY_STORE_ENCRYPTION_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-siteminder
+              key: keyStoreEncryptionKey
+        - name: KEY_STORE_SSL_ENABLED
+          {{- if eq (( .Values.global.stores.keyStore.type|lower )) "odbc" }}
+          {{- if .Values.global.stores.keyStore.odbc.ssl.enabled }}
+          value: "YES"
+          {{- else }}
+          value: "NO"
+          {{- end }}
+          {{- else }}
+          {{- if .Values.global.stores.keyStore.ldap.ssl.enabled }}
+          value: "YES"
+          {{- else }}
+          value: "NO"
+          {{- end }}
+          {{- end }}
+        - name: KEY_STORE_SSL_TRUSTSTORE
+          value: "{{ .Values.global.stores.keyStore.odbc.ssl.trustStore }}"
+        - name: KEY_STORE_SSL_HOSTNAMEINCERTIFICATE
+          value: "{{ .Values.global.stores.keyStore.odbc.ssl.hostNameInCertificate }}"
+        - name: KEY_STORE_SSL_TRUSTPWD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-siteminder
+              key: keyStoreODBCtrustStorePassword        
+        - name: LDAP_SSL_NSSDB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-siteminder
+              key: ldapSSLNSSDBPassword
+        - name: PSHEALTH_PROBE_TRUSTED_HOSTNAME
+          value: "{{ .Values.global.policyServerParams.healthProbe.trustedHost }}"
+        - name: PSHEALTH_PROBEPORT
+          value: "{{ .Values.global.policyServerParams.healthProbe.port }}"
+        - name: PSHEALTH_PROBE_INTERVAL
+          value: "{{ .Values.global.policyServerParams.healthProbe.intervalSeconds }}"
+        - name: PSHEALTH_PROBE_CONNECT_MODE
+          value: "{{ .Values.global.policyServerParams.healthProbe.connectMode }}"
+        - name: PSHEALTH_PROBE_KEYSTORE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-siteminder
+              key: psHealthKeystorePassword
+        - name: PSHEALTH_KEYSTORE_FILENAME
+          value: "{{ .Values.global.policyServerParams.healthProbe.keyStoreFileName }}"
+        - name: CA_SM_PS_ENABLE_OVM
+          {{- if .Values.global.policyServerParams.ovm.enabled }}
+          value: "YES"
+          {{- else }}
+          value: "NO"
+          {{- end }}
+        - name: OVM_SERVICE_TOCONNECT
+          value: "{{ .Values.global.policyServerParams.ovm.serviceToConnect }}"
+        - name: CA_SM_PS_RUN_PSMON
+          value: "{{ .Values.global.policyServerParams.startPSMon }}"
+        - name: CA_SM_PS_USE_APS
+          value: "{{ .Values.policyServer.aps }}"
+        - name: CA_SM_PS_USE_RSA_SECURID
+          {{- if .Values.policyServer.rsaSecureId.enabled }}
+          value: "YES"
+          {{- else }}
+          value: "NO"
+          {{- end }}
+        - name: MY_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: NODESECRET_ENCRYPTION_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-siteminder
+              key: NodeSecretEncryptionPassword
+        - name: CA_SM_PS_ENABLE_CA_IDENITITY_MANAGER_INTEGRATION
+          value: "{{ .Values.global.policyServerParams.enableSymantecIGAIntegration }}"
+        - name: CA_SM_PS_ENABLE_CA_ADVANCED_ATUH_INTEGRATION
+          value: "{{ .Values.policyServer.enableSymantecAdvancedAuthenticationIntegration }}"
+        - name: CA_SM_PS_ENABLE_RADIUS_SERVER
+          value: "{{ .Values.policyServer.enableRadiusServer }}"
+        - name: CA_SM_PS_TRACE_ENABLE
+          {{- if .Values.global.policyServerParams.smTrace.enabled }}
+          value: "YES"
+          {{- else }}
+          value: "NO"
+          {{- end }}
+        - name: CA_SM_PS_INMEMORY_TRACE_ENABLE
+          {{- if .Values.global.policyServerParams.inMemoryTrace.enabled }}
+          value: "YES"
+          {{- else }}
+          value: "NO"
+          {{- end }}
+        - name: CA_SM_PS_INMEMORY_TRACE_FILE_SIZE
+          value: "{{ .Values.global.policyServerParams.inMemoryTrace.size }}"
+        - name: CA_SM_PS_INMEMORY_TRACE_OUTPUT
+          value: "{{ .Values.global.corePath }}"
+        # Audit store configuration
+        # To Enable Audit store. Supported values are "YES" and "NO". set to "YES" to enable
+        - name: CA_SM_PS_ENABLE_AUDIT_STORE
+          {{- if .Values.global.stores.auditStore.enabled  }}
+          value: "YES"
+          {{- else }}
+          value: "NO"
+          {{- end }}
+        - name: AUDIT_STORE_TYPE
+          # External Audit Store type. Supported values are "ODBC" or "TEXT"
+          value: "{{ .Values.global.stores.auditStore.type }}"
+        - name: AUDIT_STORE_ODBC_TYPE
+          # External Audit Store ODBC type. Supported values are "MYSQL" or "ORACLE"
+          value: "{{ .Values.global.stores.auditStore.odbc.type }}"
+        - name: AUDIT_STORE_DSN
+          # DSN name for Audit store. Provide any valid name
+          value: "{{ .Values.global.stores.auditStore.odbc.DSN }}"
+        - name: AUDIT_STORE_SERVER
+          # Server IP address for Audit store connection. Provide valid IP address
+          value: "{{ .Values.global.stores.auditStore.odbc.service }}"
+        - name: AUDIT_STORE_DATABASE_NAME
+          # Database name for Audit store connection. Provide valid database name
+          value: "{{ .Values.global.stores.auditStore.odbc.databaseName }}"
+        - name: AUDIT_DATABASE_SERVICE_NAME
+          # Database service  name or Service instance ID for audit store
+          value: "{{ .Values.global.stores.auditStore.odbc.oracle.databaseServiceName }}"
+        - name: AUDIT_STORE_USER
+          # User name for Audit store connection. Provide valid user name
+          value: "{{ .Values.global.stores.auditStore.odbc.user }}"
+        - name: AUDIT_STORE_USER_PASSWORD
+          # User password for Audit store connection. Will pick value from 'auditStoreUserPassword' key from secrets file
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-siteminder
+              key: auditStoreUserPassword
+        - name: AUDIT_STORE_SSL_ENABLED
+          {{- if .Values.global.stores.auditStore.odbc.ssl.enabled }}
+          value: "YES"
+          {{- else }}
+          value: "NO"
+          {{- end }}  
+        - name: AUDIT_STORE_SSL_TRUSTSTORE
+          value: "{{ .Values.global.stores.auditStore.odbc.ssl.trustStore }}"
+        - name: AUDIT_STORE_SSL_HOSTNAMEINCERTIFICATE
+          value: "{{ .Values.global.stores.auditStore.odbc.ssl.hostNameInCertificate }}"
+        - name: AUDIT_STORE_SSL_TRUSTPWD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-siteminder
+              key: auditStoreODBCtrustStorePassword
+        - name: AUDIT_USER_ACTIVITY
+          # log user activity
+          value: "{{ .Values.global.stores.auditStore.auditUserActivity }}"
+        - name: AUDIT_ADMIN_STORE_ACTIVITY
+          # log Admin activity
+          value: "{{ .Values.global.stores.auditStore.auditAdminStoreActivity }}"
+        - name: ADMIN_AUDITING
+          # log admin activity
+          #0 - No Events, 1 - allEvents, 2 - Rejection Only
+          value: "{{ .Values.global.stores.auditStore.adminActivity | int }}"
+        - name: ENABLE_AUTH_AUDITING
+          # log authentication events
+          #0 - No Events, 1 - allEvents, 2 - Rejection Only
+          value: "{{ .Values.global.stores.auditStore.enableAuthAuditing | int }}"
+        - name: ENABLE_AZ_AUDITING
+          # log authorization events
+          #0 - No Events, 1 - allEvents, 2 - Rejection Only
+          value: "{{ .Values.global.stores.auditStore.enableAzAuditing | int }}"
+        - name: ENABLE_ANON_AUTH_AUDITING
+          # log anonymous authentication events
+          value: "{{ .Values.global.stores.auditStore.anonAuthAuditing }}"
+        - name: ENABLE_ANON_AZ_AUDITING
+          # log anonymous authorization events
+          value: "{{ .Values.global.stores.auditStore.anonAzAuditing }}"
+        - name: ENABLE_AFFILIATE_AUDITING
+          # log affiliate events
+          #0 - No Events or 1 - allEvents
+          value: "{{ .Values.global.stores.auditStore.affiliateAuditing | int }}"
+          # Session store configuration
+        - name: CA_SM_PS_ENABLE_SESSION_STORE
+          # To Enable session store. Supported values are "YES" and "NO". set to "YES" to enable
+          {{- if .Values.global.stores.sessionStore.enabled }}
+          value: "YES"
+          {{- else }}
+          value: "NO"
+          {{- end }}
+        - name: SESSION_STORE_TYPE
+          # Session Store type. Supported values are "LDAP" and "ODBC"
+          value: "{{ .Values.global.stores.sessionStore.type }}"
+        - name: SESSION_STORE_ODBC_TYPE
+          # External Session Store may be of type MYSQL or ORACLE
+          value: "{{ .Values.global.stores.sessionStore.odbc.type }}"
+        - name: SESSION_STORE_DSN
+          # DSN name for Session store. Provide any valid name
+          value: "{{ .Values.global.stores.sessionStore.odbc.DSN }}"
+        - name: SESSION_STORE_SERVER
+          # Server IP address for Session store connection. Provide valid IP address
+          value: "{{ .Values.global.stores.sessionStore.service }}"        
+        - name: SESSION_STORE_DATABASE_NAME
+          # Database name for Session store connection. Provide valid database name
+          value: "{{ .Values.global.stores.sessionStore.odbc.databaseName }}"
+        - name: SESSION_DATABASE_SERVICE_NAME
+          # Database service  name or Service instance ID for Session store
+          value: "{{ .Values.global.stores.sessionStore.odbc.oracle.databaseServiceName }}"
+        - name: SESSION_STORE_USER
+          # User name for Session store connection. Provide valid user name
+          value: "{{ .Values.global.stores.sessionStore.odbc.user }}"
+        - name: SESSION_STORE_SSL_ENABLED
+          {{- if eq (( .Values.global.stores.sessionStore.type|lower )) "odbc" }}
+          #  To enable SSL to session store connection
+          {{- if .Values.global.stores.sessionStore.odbc.ssl.enabled }}
+          value: "YES"
+          {{- else }}
+          value: "NO"
+          {{- end }}
+          {{- else }}
+          {{- if .Values.global.stores.sessionStore.ldap.ssl.enabled }}
+          value: "YES"
+          {{- else }}
+          value: "NO"
+          {{- end }}
+          {{- end }}
+        - name: SESSION_STORE_SSL_TRUSTSTORE
+          value: "{{ .Values.global.stores.sessionStore.odbc.ssl.trustStore }}"
+        - name: SESSION_STORE_SSL_HOSTNAMEINCERTIFICATE
+          value: "{{ .Values.global.stores.sessionStore.odbc.ssl.hostNameInCertificate }}"
+        - name: SESSION_STORE_ROOT_DN
+          # Root DN for LDAP session store connection. Provide valid root DN
+          value: "{{ .Values.global.stores.sessionStore.ldap.rootDN }}"
+        - name: SESSION_STORE_USER_DN
+          # User DN for LDAP session store connection. Provide valid User DN
+          value: "{{ .Values.global.stores.sessionStore.ldap.userDN }}"
+        - name: SESSION_STORE_SSL_TRUSTPWD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-siteminder
+              key: sessionStoreODBCtrustStorePassword
+        - name: SESSION_STORE_USER_PASSWORD
+          # User password for Session store connection. Will pick value from 'sessionStoreUserPassword' key from secrets file
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-siteminder
+              key: sessionStoreUserPassword
+        - name: CERT_ATTRIBUTES_ROOTCA_CERT
+          value: {{ .Values.global.policyServerParams.certUtil.trustAttributes.rootCA }}
+        - name: CERT_ATTRIBUTES_SERVER_CERT
+          value: {{ .Values.global.policyServerParams.certUtil.trustAttributes.server }} 
+        {{- if .Values.global.troubleshootingData.enabled }}
+        - name: TROUBLESHOOT_DATA_STORAGE_TYPE
+          value: "{{ .Values.global.troubleshootingData.storageType }}"
+        - name: ARCHIVE_FILES
+          value: {{- range .Values.global.troubleshootingData.archiveFiles }} {{ . }}, {{- end }}
+        {{- if eq .Values.global.troubleshootingData.storageType "awsS3" }}
+        - name: TROUBLESHOOT_DATA_AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-siteminder
+              key: troubleshootDataAwsAccessKeyId
+        - name: TROUBLESHOOT_DATA_AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-siteminder
+              key: troubleshootDataAwsSecretAccessKey
+        - name: TROUBLESHOOT_DATA_AWS_DEFAULT_REGION
+          value: {{ .Values.global.troubleshootingData.aws.region }}
+        - name: AWS_BUCKET_NAME
+          value: {{ .Values.global.troubleshootingData.aws.bucketName }}
+        {{- end }}
+        {{- if eq .Values.global.troubleshootingData.storageType "azureFileShares" }}
+        - name: TROUBLESHOOT_DATA_AZURE_SAS_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-siteminder
+              key: troubleshootDataAzureSASToken
+        - name: AZURE_FILE_ENDPOINT
+          value: {{ .Values.global.troubleshootingData.azure.fileEndpoint }}
+        - name: AZURE_FILESHARE_NAME
+          value: {{ .Values.global.troubleshootingData.azure.fileShareName }}
+        - name: AZURE_SHARE_DIR_PATH
+          value: {{ .Values.global.troubleshootingData.azure.directoryPath }}
+        {{- end }}
+        {{- end }}
+        ports:
+        # PS Health probe
+        - name: psprobe-port
+          containerPort: {{ .Values.global.policyServerParams.healthProbe.port }}
+        - containerPort: 44441
+        - containerPort: 44442
+        - containerPort: 44443
+        startupProbe:
+          exec:
+            command: ["/bin/bash", "-c", "/opt/CA/siteminder/ps-status-check"]
+          periodSeconds: {{ .Values.global.policyServerParams.startupProbe.periodSeconds }}
+          failureThreshold: {{ .Values.global.policyServerParams.startupProbe.failureThreshold }}
+        livenessProbe:
+          httpGet:
+            scheme: {{ .Values.global.policyServerParams.healthProbe.connectMode }}
+            path: /health
+            port: psprobe-port
+          initialDelaySeconds: {{ .Values.global.policyServerParams.livenessProbe.initialDelaySeconds }}
+          timeoutSeconds: {{ .Values.global.policyServerParams.livenessProbe.timeoutSeconds }}
+          periodSeconds: {{ .Values.global.policyServerParams.livenessProbe.periodSeconds }}
+          failureThreshold: {{ .Values.global.policyServerParams.livenessProbe.failureThreshold }}
+        readinessProbe:
+          httpGet:
+            scheme: {{ .Values.global.policyServerParams.healthProbe.connectMode }}
+            path: /health
+            port: psprobe-port
+          initialDelaySeconds: {{ .Values.global.policyServerParams.readinessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.global.policyServerParams.readinessProbe.periodSeconds }} 
+          timeoutSeconds: {{ .Values.global.policyServerParams.readinessProbe.timeoutSeconds }}
+          failureThreshold: {{ .Values.global.policyServerParams.readinessProbe.failureThreshold }}
+        lifecycle:
+          preStop:
+            exec:
+              # SIGTERM triggers a quick exit; gracefully terminate instead
+              command: ["/bin/bash", "-c", "/opt/CA/siteminder/stop-ps-container"]
+        volumeMounts:
+        - name: policy-server-config
+          mountPath: /configuration
+        - name: health-check
+          mountPath: /scripts
+        {{- if .Values.policyServer.metricsExporter.enabled }}
+        - name: policy-server-monitor-communication
+          mountPath: "/tmp"
+        {{- end }}
+        - name: corefile-config
+          mountPath: {{ .Values.global.corePath }}
+        {{- if .Values.policyServer.runtimeConfiguration.enabled }}
+        - name: policy-server-runtime-config
+          mountPath: /runtimeConfig
+        {{- end }}
+      {{- if .Values.policyServer.runtimeConfiguration.enabled }}
+      - name: runtime-config-retriever
+        image: {{ .Values.global.runtimeConfiguration.repository }}/{{ .Values.global.runtimeConfiguration.image }}:{{ .Values.global.runtimeConfiguration.tag }}
+        imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+        securityContext:
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false                        
+        resources:
+          {{- toYaml .Values.global.runtimeConfiguration.resources | nindent 12 }}
+        {{- if eq .Values.global.runtimeConfiguration.type "nfs" }}
+        securityContext:
+          capabilities:
+            add:
+              - SYS_ADMIN
+        {{- end }}
+        env:
+        - name: RUNTIMETYPE
+          value: {{ .Values.global.runtimeConfiguration.type }}
+        - name: RUNTIMESOURCE
+          value: {{ .Values.policyServer.runtimeConfiguration.source }}
+        - name: POD_LABEL
+          value: "policyserver"
+        - name: MASTERKEYSEED
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-siteminder
+              key: masterKeySeed
+        {{- if eq .Values.global.runtimeConfiguration.type "git" }}
+        - name: OAUTH_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-siteminder
+              key: githubRuntimeAccessToken
+        - name: GIT_USERNAME
+          value: "{{ .Values.global.runtimeConfiguration.git.username }}"
+        - name: GIT_FOLDERPATH
+          value: {{ .Values.policyServer.runtimeConfiguration.runtimeGitFolderPath }}
+        {{- end }}
+        {{- if eq .Values.global.runtimeConfiguration.type "awsS3" }}
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-siteminder
+              key: awsRuntimeAccessKeyId
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-siteminder
+              key: awsRuntimeSecretAccessKey
+        - name: AWS_DEFAULT_REGION
+          value: {{ .Values.global.runtimeConfiguration.aws.region }}
+        {{- end }}
+        - name: RUNTIMEINTERVAL
+          value: "{{ .Values.global.runtimeConfiguration.intervalSeconds }}"
+        volumeMounts:
+        - name: policy-server-runtime-config
+          mountPath: /runtimeConfig
+        {{- if eq .Values.global.runtimeConfiguration.type "local" }}
+        - name: policy-server-runtime-local-config
+          readOnly: true
+          mountPath: {{ .Values.policyServer.runtimeConfiguration.source }}
+        {{- end }}
+      {{- end }}
+      {{- if .Values.policyServer.metricsExporter.enabled }}
+      - name: metricsexporter
+        image: {{ .Values.policyServer.metricsExporter.repository }}/{{ .Values.policyServer.metricsExporter.image }}:{{ .Values.policyServer.metricsExporter.tag }}
+        imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+        securityContext:
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false
+        resources:
+          {{- toYaml .Values.policyServer.metricsExporter.resources | nindent 12 }}
+        ports:
+        - containerPort: 8088
+        livenessProbe:
+          exec:
+            command: ["/bin/sh", "-c", "/scripts/metricsexporter-health-check.sh"]
+          initialDelaySeconds: {{ .Values.policyServer.metricsExporter.livenessProbe.initialDelaySeconds }}
+          timeoutSeconds: {{ .Values.policyServer.metricsExporter.livenessProbe.timeoutSeconds }}
+        readinessProbe:
+          exec:
+            command: ["/bin/sh", "-c", "/scripts/metricsexporter-health-check.sh"]
+          initialDelaySeconds: {{ .Values.policyServer.metricsExporter.readinessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.policyServer.metricsExporter.readinessProbe.periodSeconds }}
+        env:
+        - name: CONTAINER_TOMCAT_HTTP_PORT
+          value: "8088"
+        volumeMounts:
+        - name: policy-server-monitor-communication
+          mountPath: "/tmp"
+        - name: policy-server-config
+          mountPath: /configuration
+        - name: metricsexporter-health-check
+          mountPath: /scripts
+        - name: corefile-config
+          mountPath: {{ .Values.global.corePath }}
+      {{- end }}
+      {{- if .Values.global.registry.existingSecrets }}
+      imagePullSecrets:
+      {{- toYaml .Values.global.registry.existingSecrets | nindent 6 }}
+      {{- else if .Values.global.registry.credentials.username }}
+      imagePullSecrets:
+      - name: {{ .Release.Name }}-siteminder-registry-key
+      {{- end }}
+      dnsPolicy: {{ .Values.global.dnsPolicy }} 
+      restartPolicy: {{ .Values.global.restartPolicy }} 
+      volumes:
+      - name: policy-server-config
+        emptyDir: {}
+      {{- if .Values.policyServer.runtimeConfiguration.enabled }}
+      - name: policy-server-runtime-config
+        emptyDir: {}
+      {{- end }}
+      {{- if .Values.global.configuration.enabled }}
+      {{- if eq .Values.global.configuration.type "local" }}
+      - name: policy-server-local-config
+        hostPath:
+          path: {{ .Values.policyServer.configuration.source }}
+      {{- end }}
+      {{- end }}
+      {{- if .Values.policyServer.runtimeConfiguration.enabled }}
+      {{- if eq .Values.global.runtimeConfiguration.type "local" }}
+      - name: policy-server-runtime-local-config
+        hostPath:
+          path: {{ .Values.policyServer.runtimeConfiguration.source }}
+      {{- end }}
+      {{- end }}
+      - name: corefile-config
+        emptyDir: {}
+      - name: health-check
+        configMap:
+          name: {{ .Release.Name }}-siteminder-policyserver-healthcheck
+          defaultMode: 0777
+      {{- if .Values.policyServer.metricsExporter.enabled }}
+      - name: metricsexporter-health-check
+        configMap:
+          name: {{ .Release.Name }}-siteminder-metricsexporter-healthcheck
+          defaultMode: 0777
+      - name: policy-server-monitor-communication
+        emptyDir: {}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+{{- end }}

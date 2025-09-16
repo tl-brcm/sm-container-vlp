@@ -1,0 +1,211 @@
+global:
+  acceptLicenseAgreement: "YES"
+  fullnameOverride: "casso"
+  existingServiceAccount: ""
+  restartPolicy: Always
+  podTerminateGracePeriod: 60
+  dnsPolicy: ClusterFirst
+  terminationMessagePath: /dev/termination-log
+  imagePullPolicy: Always
+  keySeed: "${MKEY}"
+  registry:
+    url: "https://siteminder.packages.broadcom.com/"
+    existingSecrets: []
+    credentials:
+      username: ${SMDOCKERID}
+      password: ${SMDOCKERPWD}
+images:
+  configuration:
+    repository: "siteminder.packages.broadcom.com/casso"
+    image: "config-retriever"
+    tag: 12.8.0801.3037
+  runtime:
+    configuration:
+      repository: "siteminder.packages.broadcom.com/casso"
+      image: "runtime-config-retriever"
+      tag: 12.8.0801.3037
+  metricsExporter:
+    repository: "siteminder.packages.broadcom.com/casso"
+    image: "agmetricsexporter"
+    tag: 12.8.0801.3037
+  accessGateway:
+    repository: "siteminder.packages.broadcom.com/casso"
+    image: "access-gateway"
+    tag: 12.8.0801.3037
+  sso:
+    registry:
+      credentials:
+        username: iambnr
+        password: ${SMDOCKERPWD}
+      url: https://siteminder.packages.broadcom.com/
+    accessGateway:
+      repository: siteminder.packages.broadcom.com/casso
+    configuration:
+      repository: siteminder.packages.broadcom.com/casso
+    logging:
+      repository: siteminder.packages.broadcom.com/casso
+    metricsExporter:
+      repository: siteminder.packages.broadcom.com/casso
+    runtime:
+      configuration:
+        repository: siteminder.packages.broadcom.com/casso
+sso:
+  policyServer:
+    service: "${PSREL}-siteminder-policy-server.${PSNS}.svc.cluster.local"
+    fipsMode: "COMPAT"
+  configuration:
+    enabled: true
+    type: "git"
+    source: "https://github.com/tl-brcm/sm2022configr.git;ag-voonair2-nocert"
+    aws:
+      creds: "awscreds"
+      keyID: ""
+      accessKey: ""
+      region: ""
+    git:
+      creds: "gitcreds"
+      username: "${GITID}"
+            accessToken: "${GITPAT}"
+      folderPath: "/deploy/accessgateway"
+  runtime:
+    configuration:
+      enabled: true
+      interval: 60
+      type: "git"
+      source: "https://github.com/tl-brcm/sm2022configr.git;ag-voonair2-nocert"
+      aws:
+        creds: "runtimeawscreds"
+        keyID: ""
+        accessKey: ""
+        region: ""
+      git:
+        creds: "runtimegitcreds"
+        username: "${GITID}"
+              accessToken: "${GITPAT}"
+        folderPath: "/runtime/accessgateway"
+    resources:
+      requests:
+        cpu: 100m
+        memory: 100Mi
+  metricsExporter:
+    livenessProbe:
+      initialDelaySeconds: 40
+      timeoutSeconds: 10
+    readinessProbe:
+      initialDelaySeconds: 30
+      periodSeconds: 10
+    resources:
+      requests:
+        cpu: 200m
+        memory: 200Mi
+  accessGateway:
+    replicas: 1
+    annotations:
+      values: {prometheus.io/scrape: 'true', prometheus.io/port: '9090', prometheus.io/path: '/metrics/'}
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 25%
+    hostAliases:
+      - ip: "192.168.1.10"
+        hostnames:
+          - "example.com"
+          - "www.example.com"
+    livenessProbe:
+      initialDelaySeconds: 40
+      periodSeconds: 10
+      timeoutSeconds: 10
+      failureThreshold: 5
+    readinessProbe:
+      initialDelaySeconds: 60
+      periodSeconds: 10
+      timeoutSeconds: 10
+      failureThreshold: 5
+    publicHostname: "${AGNAME}"
+    trustedHost: "${AGTH}"
+    enableSharedRollover: false
+    aco: "SecureProxyServer"
+    hco: "InitialHCO"
+    corePath: /tmp/corefiles/cores/
+    troubleshootingData:
+      enabled: false
+      storageType: "awsS3"
+      archiveFiles: []
+      creds: "troubleshootdatacreds"
+      aws:
+        bucketName: ""
+        region: ""
+        keyID: ""
+        accessKey: ""
+      azure:
+        fileEndpoint: ""
+        fileShareName: ""
+        directoryPath: ""
+        sasToken: ""
+    virtualHostnames: "${AGNAME}"
+    enableAgent: true
+    agentTrace:
+      enabled: false
+    apache:
+      adminEmail: "admin@example.com"
+      trace: true
+      ssl:
+        enabled: true
+        certFile: "server.crt"
+        keyFile: "server.key"
+        caFile: "ca-bundle.cert"
+        verifyType: "Optional"
+        verifyDepth: 10
+        creds: "apachesslcreds"
+        keyPwd: "cGFzc3dvcmQ="
+    noodle:
+      ssl:
+        enabled: false
+        clientKey: ""
+        creds: "noodlesslcreds"
+        clientPassphrase: ""
+    service:
+      type: "NodePort"
+    ingress:
+      className: "nginx"
+      enableSSLPassThrough: "NO"
+      sessionAffinityEnabled: false
+      virtualHostname: "${AGNAME}"
+      tlsCrt: "${TLS_CERT}"
+            tlsKey: "${TLS_KEY}"
+      tlsSecret: acccess-gateway-vhostname-tls
+    ag:
+      metricsExporter:
+        enabled: true
+      resources:
+        requests:
+          cpu: 400m
+          memory: 500Mi
+    pod:
+      autoscaling:
+        enabled: true
+        type: "both"
+        replicasMin: 1
+        replicasMax: 4
+        cpuUtilization: 50
+        customMetrics:
+          metricName: "apache_request_rate"
+          targetAverageValue: 20
+    authaz:
+      enabled: true
+      acoName: "az-service-aco"
+      hostName: "sps3.demo-broadcom.com"
+      log:
+        enabled: true
+    federationGateway:
+      enabled: true
+      trace:
+        enabled: true
+    regSecret:
+      name: "regadmincreds"
+  adminUsername: "c2l0ZW1pbmRlcg=="
+  adminPassword: "Q0FEZW1vQDEyMw=="
+nodeSelector: {}
+tolerations: []
+affinity: {}
+masterkey:
+  masterKeySeed: TUtleTEyMw==

@@ -1,0 +1,9 @@
+maintenance:
+  enabled: true
+  operation:
+    name: "XPSExport"
+    args: "test.xml -xb -npass"
+    input_file: ""
+  job:
+    restartPolicy: Never
+    backOffLimit: 1

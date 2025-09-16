@@ -1,0 +1,159 @@
+apiVersion: v1
+data:
+  fluent-bit-filter.conf: "[FILTER]\n    Name                kubernetes\n    Match
+    \              sso_ps_log_msg.*\n    Kube_Tag_Prefix     sso_ps_log_msg.var.log.containers.\n
+    \   Kube_URL            https://kubernetes.default.svc:443\n    Kube_CA_File        /var/run/secrets/kubernetes.io/serviceaccount/ca.crt\n
+    \   Kube_Token_File     /var/run/secrets/kubernetes.io/serviceaccount/token\n
+    \   Buffer_Size         1Mb \n    Merge_Log           On\n    Keep_Log            Off\n
+    \   #Merge_Log_Key       \"\"\n    K8S-Logging.Parser  Off\n    #K8S-Logging.Exclude
+    On\n    #Use_Journal         On\n\n[FILTER]\n    Name                kubernetes\n
+    \   Match               sso_admin_log_msg.*\n    Kube_Tag_Prefix     sso_admin_log_msg.var.log.containers.\n
+    \   Kube_URL            https://kubernetes.default.svc:443\n    Kube_CA_File        /var/run/secrets/kubernetes.io/serviceaccount/ca.crt\n
+    \   Kube_Token_File     /var/run/secrets/kubernetes.io/serviceaccount/token\n
+    \   Buffer_Size         1Mb \n    Merge_Log           On\n    Keep_Log            Off\n
+    \   #Merge_Log_Key       \"\"\n    K8S-Logging.Parser  Off\n    #K8S-Logging.Exclude
+    On\n    #Use_Journal         On\n\n[FILTER]\n    Name                kubernetes\n
+    \   Match               sso_ag_log_msg.*\n    Kube_Tag_Prefix     sso_ag_log_msg.var.log.containers.\n
+    \   Kube_URL            https://kubernetes.default.svc:443\n    Kube_CA_File        /var/run/secrets/kubernetes.io/serviceaccount/ca.crt\n
+    \   Kube_Token_File     /var/run/secrets/kubernetes.io/serviceaccount/token\n
+    \   Buffer_Size         1Mb \n    Merge_Log           On\n    Keep_Log            Off\n
+    \   #Merge_Log_Key       \"\"\n    K8S-Logging.Parser  Off\n    #K8S-Logging.Exclude
+    On\n    #Use_Journal         On\n"
+  fluent-bit-input.conf: |
+    [INPUT]
+        Name             tail
+        Path             /var/log/containers/*-policy-server-*_*_*.log
+        Parser           cri
+        Tag              sso_ps_log_msg.*
+        Refresh_Interval 5
+        Mem_Buf_Limit    5MB
+        Buffer_Max_Size  1M
+        Buffer_Chunk_Size 128k
+        Skip_Long_Lines  Off
+        DB               /var/log/tail-containers-state-sso_ps_log_msg.db
+        DB.Sync          Normal
+
+    [INPUT]
+        Name             tail
+        Path             /var/log/containers/*-admin-*_*_*.log
+        Parser           cri
+        Tag              sso_admin_log_msg.*
+        Refresh_Interval 5
+        Mem_Buf_Limit    5MB
+        Buffer_Max_Size  1M
+        Buffer_Chunk_Size 128k
+        Skip_Long_Lines  Off
+        DB               /var/log/tail-containers-state-sso_admin_log_msg.db
+        DB.Sync          Normal
+
+    [INPUT]
+        Name             tail
+        Path             /var/log/containers/*-access-gateway-*_*_*.log
+        Parser           cri
+        Tag              sso_ag_log_msg.*
+        Refresh_Interval 5
+        Mem_Buf_Limit    5MB
+        Buffer_Max_Size  1M
+        Buffer_Chunk_Size 128k
+        Skip_Long_Lines  Off
+        DB               /var/log/tail-containers-state-sso_ag_log_msg.db
+        DB.Sync          Normal
+  fluent-bit-output.conf: |2
+
+
+    [OUTPUT]
+        Match sso_ps_log
+        Name es
+        Host  elasticsearch-es-http.logging.svc
+        Port  9200
+        tls   On
+        tls.verify Off
+        Suppress_Type_Name On
+        Replace_Dots On
+        Index sso_ps_log
+        HTTP_User kibana
+        HTTP_Passwd changeme
+
+    [OUTPUT]
+        Match sso_ag_log
+        Name es
+        Host  elasticsearch-es-http.logging.svc
+        Port  9200
+        tls   On
+        tls.verify Off
+        Suppress_Type_Name On
+        Replace_Dots On
+        Index sso_ag_log
+        HTTP_User kibana
+        HTTP_Passwd changeme
+
+    [OUTPUT]
+        Match sso_admin_log
+        Name es
+        Host  elasticsearch-es-http.logging.svc
+        Port  9200
+        tls   On
+        tls.verify Off
+        Suppress_Type_Name On
+        Replace_Dots On
+        Index sso_admin_log
+        HTTP_User kibana
+        HTTP_Passwd changeme
+  fluent-bit-service.conf: |
+    [SERVICE]
+        Flush        1
+        Daemon       Off
+        Log_Level    info
+        Parsers_File parsers.conf
+        Streams_File fluent-bit-streamer.conf
+        HTTP_Server  On
+        HTTP_Listen  0.0.0.0
+        HTTP_Port    2020
+        Health_Check On
+  fluent-bit-streamer.conf: |
+    [STREAM_TASK]
+        Name   sso_ps_log
+        Exec   CREATE STREAM sso_ps_log WITH (tag='sso_ps_log') AS SELECT * from TAG:'sso_ps_log_msg.*';
+    [STREAM_TASK]
+        Name   sso_admin_log
+        Exec   CREATE STREAM sso_admin_log WITH (tag='sso_admin_log') AS SELECT * from TAG:'sso_admin_log_msg.*';
+    [STREAM_TASK]
+        Name   sso_ag_log
+        Exec   CREATE STREAM sso_ag_log WITH (tag='sso_ag_log') AS SELECT * from TAG:'sso_ag_log_msg.*';
+  fluent-bit.conf: |
+    @INCLUDE fluent-bit-service.conf
+    @INCLUDE fluent-bit-input.conf
+    @INCLUDE fluent-bit-filter.conf
+    @INCLUDE fluent-bit-output.conf
+  parsers.conf: |
+    [PARSER]
+        Name        docker
+        Format      json
+        Time_Keep   off
+        Time_Key    time
+        # TBD: update to use log entry's timestamp
+        Time_Format %Y-%m-%dT%H:%M:%S.%LZ
+        Decode_Field_As escaped log
+    [PARSER]
+        Name        cri
+        Format      regex
+        Regex       ^(?<time>[^ ]+) (?<stream>stdout|stderr) (?<logtag>[^ ]*) (?<log>.*)$
+        Time_Key    time
+        Time_Format %Y-%m-%dT%H:%M:%S.%L%z
+kind: ConfigMap
+metadata:
+  annotations:
+    configVersion: "1.0"
+    meta.helm.sh/release-name: siteminder-infra
+    meta.helm.sh/release-namespace: sminfra
+  creationTimestamp: "2023-10-25T09:53:29Z"
+  labels:
+    app: siteminder-infra
+    app.kubernetes.io/managed-by: Helm
+    chart: siteminder-infra-1.0.3100
+    heritage: Helm
+    release: siteminder-infra
+  name: siteminder-infra-config
+  namespace: sminfra
+  resourceVersion: "14046183"
+  uid: 18aba694-f61b-4f27-859c-90b865ddf781
