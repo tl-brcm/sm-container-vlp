@@ -56,7 +56,7 @@ sso:
   configuration:
     enabled: true
     type: "git"
-    source: "https://github.com/tl-brcm/sm2022configr.git;ag-voonair2-nocert"
+    source: "${AG_GIT_SOURCE}"
     aws:
       creds: "awscreds"
       keyID: ""
@@ -72,7 +72,7 @@ sso:
       enabled: true
       interval: 60
       type: "git"
-      source: "https://github.com/tl-brcm/sm2022configr.git;ag-voonair2-nocert"
+      source: "${AG_GIT_SOURCE}"
       aws:
         creds: "runtimeawscreds"
         keyID: ""
@@ -123,8 +123,8 @@ sso:
     publicHostname: "${AGNAME}"
     trustedHost: "${AGTH}"
     enableSharedRollover: false
-    aco: "SecureProxyServer"
-    hco: "InitialHCO"
+    aco: "${AGACO}"
+    hco: "${AGHCO}"
     corePath: /tmp/corefiles/cores/
     troubleshootingData:
       enabled: false

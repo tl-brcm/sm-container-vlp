@@ -16,10 +16,13 @@ export KEYFILE="base/k8s/k8s.key"
 
 # --- Siteminder Helm Repository ---
 export SMREPO="siteminder"
-export SMURL="https://packages.broadcom.com/artifactory/api/helm/siteminder-helm/"
+export SMURL="https://packages.broadcom.com/artifactory/api/helm/siteminder-helm"
 export SMID="" # Authorized SiteMinder Helm Repo ID
 export SMPWD='' # Authorized SiteMinder Helm Repo Password
 export SMVER="--version=12.9.000+3079"
+
+export SSP_HELM_USERNAME=""
+export SSP_HELM_PASSWORD=""
 
 # --- Siteminder Docker Registry ---
 export SMDOCKERID="$SMID"
@@ -41,27 +44,33 @@ export AGREL="siteminderserver"
 export AGNAME="sps2.$DOMAIN"
 export AGVALUES="envs/democadir/ag-values.yaml"
 
+export CADIRVALUES="envs/democadir/cadir-values.yaml"
+
 # --- Siteminder Base Configuration ---
-export MKEY="MKey123" # Master Key Seed
-export SUPERID="siteminder" # SiteMinder Super User ID
-export SPASS="P@ssw0rd1" # Superuser Password
-export EKEY="EKey123" # Encryption Key
+export MKEY="TUtleTEyMw==" # Master Key Seed
+export SUPERID="c2l0ZW1pbmRlcg==" # SiteMinder Super User ID
+export SPASS="UEBzc3cwcmQx" # Superuser Password
+export EKEY="RUtleTEyMw==" # Encryption Key
 
 # --- LDAP Policy Store ---
 export LDAP="pstore-ssp-symantec-dir.pstore.svc.cluster.local:389"
 export RDN="o=democorp,c=us" # LDAP Root DN
 export BDN="cn=admin,o=democorp,c=us" # LDAP Bind DN
-export BPASS="password" # LDAP Bind Password
+export BPASS="cGFzc3dvcmQ=" # LDAP Bind Password
 
 # --- Git Config Retriever ---
 export GITREPOBASE="github.com/tc09-brcm-social/sm2022configr.git"
 export GITBRANCH="skeleton"
-export GITID="dummy"
-export GITPAT="dummypass"
+export GITID="tl_brcm"
+export GITPAT="dummy" # this can be dummy if the repo is public, but there has to be a value. 
 
 # --- Access Gateway Configuration ---
+export AG_GIT_SOURCE="https://github.com/tl-brcm/sm2022configr.git;ag-voonair2-nocert"
+export AG_HCO="InitialHCO"
+export AG_ACO="SecureProxyServer"
 export AGTH="sps2.${DOMAIN}" # Access Gateway Trusted Host Name
-export AGACO="SecureProxyServer" # Access Gateway ACO name
-export AGHCO="InitialHCO" # Access Gateway HCO name
 export SMREGID=$SUPERID # SiteMinder Registration ID
 export SMREGPWD=$SPASS # SiteMinder Registration password
+
+export SSP_HELM_REPO="ssp_helm_charts"
+export SSP_HELM_REPO_URL="https://ssp_helm_charts.storage.googleapis.com"

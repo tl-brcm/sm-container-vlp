@@ -22,13 +22,31 @@ createns "$AGNS"
 #
 ## Install SiteMinder Access Gateway chart
 #
-if [[ -z "$(relexist \"$AGNS\" \"$AGREL\")" ]] ; then
-    helm install "$AGREL" -n ${AGNS}  \
-        $SMREPO/access-gateway $SMVER -f /tmp/ag-values.yaml  \
-        --debug > \"$AGREL.$AGNS.$$.debug\"
+echo "Substituting variables in ${AGVALUES}..."
+envsubst < "${MYPATH}/../${AGVALUES}" > /tmp/ag-values.yaml
+
+if [[ -z "$(repoexist \"$SMREPO\")" ]] ; then
+    echo "Adding Helm repository..."
+    bash "${MYPATH}/../base/smrepo.sh" > /tmp/smrepo.log 2>&1
 else
-    >&2 echo release $AGREL exists, attempt to upgrade
-    helm upgrade --install "$AGREL" -n ${AGNS}  \
-        $SMREPO/access-gateway $SMVER -f /tmp/ag-values.yaml  \
-        --debug > "$AGREL.$AGNS.$$.debug"
+    echo "Helm repository $SMREPO already exists."
 fi
+
+echo "Creating namespace ${AGNS} if it doesn't exist..."
+createns "$AGNS"
+
+#
+## Install SiteMinder Access Gateway chart
+#
+if ! helm list -n "$AGNS" | grep -q "$AGREL"; then
+    echo "Installing SiteMinder Access Gateway..."
+    helm install "$AGREL" -n ${AGNS} \
+        $SMREPO/access-gateway $SMVER -f /tmp/ag-values.yaml > /tmp/smag-install.log 2>&1
+    echo "SiteMinder Access Gateway installation complete. See /tmp/smag-install.log for details."
+else
+    echo "Upgrading SiteMinder Access Gateway..."
+    helm upgrade "$AGREL" -n ${AGNS} \
+        $SMREPO/access-gateway $SMVER -f /tmp/ag-values.yaml > /tmp/smag-upgrade.log 2>&1
+    echo "SiteMinder Access Gateway upgrade complete. See /tmp/smag-upgrade.log for details."
+fi
+
