@@ -3,8 +3,6 @@ MYPATH="$(cd "${BASH_SOURCE[0]%/*}"; pwd)"
 cd "${MYPATH}"
 . "${MYPATH}/../base/env.shlib"
 
-createns "$PSNS"
-
 #
 ## Install SiteMinder Server Components chart
 #
@@ -13,3 +11,5 @@ if [[ -z "$(chartexist "$PSNS" "$PSREL")" ]] ; then
 else
     helm uninstall "$PSREL" -n ${PSNS}
 fi
+
+kubectl delete ns ${PSNS}

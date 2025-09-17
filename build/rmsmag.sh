@@ -3,8 +3,6 @@ MYPATH="$(cd "${BASH_SOURCE[0]%/*}"; pwd)"
 cd "${MYPATH}"
 . "${MYPATH}/../base/env.shlib"
 
-createns "$AGNS"
-
 #
 ## Install SiteMinder Access Gateway chart
 #
@@ -13,3 +11,5 @@ if [[ -z "$(relexist "$AGNS" "$AGREL")" ]] ; then
 else
     helm uninstall "$AGREL" -n ${AGNS}
 fi
+
+kubectl delete ns ${AGNS}

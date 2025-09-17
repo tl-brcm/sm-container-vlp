@@ -18,20 +18,20 @@ images:
   configuration:
     repository: "siteminder.packages.broadcom.com/casso"
     image: "config-retriever"
-    tag: 12.8.0801.3037
+    
   runtime:
     configuration:
       repository: "siteminder.packages.broadcom.com/casso"
       image: "runtime-config-retriever"
-      tag: 12.8.0801.3037
+      
   metricsExporter:
     repository: "siteminder.packages.broadcom.com/casso"
     image: "agmetricsexporter"
-    tag: 12.8.0801.3037
+    
   accessGateway:
     repository: "siteminder.packages.broadcom.com/casso"
     image: "access-gateway"
-    tag: 12.8.0801.3037
+    
   sso:
     registry:
       credentials:
@@ -65,7 +65,7 @@ sso:
     git:
       creds: "gitcreds"
       username: "${GITID}"
-            accessToken: "${GITPAT}"
+      accessToken: "${GITPAT}"
       folderPath: "/deploy/accessgateway"
   runtime:
     configuration:
@@ -81,7 +81,7 @@ sso:
       git:
         creds: "runtimegitcreds"
         username: "${GITID}"
-              accessToken: "${GITPAT}"
+        accessToken: "${GITPAT}"
         folderPath: "/runtime/accessgateway"
     resources:
       requests:
@@ -150,13 +150,14 @@ sso:
       trace: true
       ssl:
         enabled: true
+        useIngressTlsSecret: true
         certFile: "server.crt"
         keyFile: "server.key"
         caFile: "ca-bundle.cert"
         verifyType: "Optional"
         verifyDepth: 10
         creds: "apachesslcreds"
-        keyPwd: "cGFzc3dvcmQ="
+        keyPwd: ""
     noodle:
       ssl:
         enabled: false
@@ -171,11 +172,11 @@ sso:
       sessionAffinityEnabled: false
       virtualHostname: "${AGNAME}"
       tlsCrt: "${TLS_CERT}"
-            tlsKey: "${TLS_KEY}"
+      tlsKey: "${TLS_KEY}"
       tlsSecret: acccess-gateway-vhostname-tls
     ag:
       metricsExporter:
-        enabled: true
+        enabled: false
       resources:
         requests:
           cpu: 400m
@@ -193,7 +194,7 @@ sso:
     authaz:
       enabled: true
       acoName: "az-service-aco"
-      hostName: "sps3.demo-broadcom.com"
+      hostName: "${AGNAME}"
       log:
         enabled: true
     federationGateway:
