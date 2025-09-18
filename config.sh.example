@@ -62,7 +62,7 @@ export BPASS="cGFzc3dvcmQ=" # LDAP Bind Password
 export GITREPOBASE="github.com/tc09-brcm-social/sm2022configr.git"
 export GITBRANCH="skeleton"
 export GITID="tl_brcm"
-export GITPAT="dummy" # this can be dummy if the repo is public, but there has to be a value. 
+export GITPAT="cGFzc3dvcmQ=" # this can be dummy if the repo is public, but there has to be a value. 
 
 # --- Access Gateway Configuration ---
 export AG_GIT_SOURCE="https://github.com/tl-brcm/sm2022configr.git;ag-voonair2-nocert"
