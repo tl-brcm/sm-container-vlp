@@ -49,7 +49,7 @@ export CADIRVALUES="envs/democadir/cadir-values.yaml"
 # --- Siteminder Base Configuration ---
 export MKEY="TUtleTEyMw==" # Master Key Seed
 export SUPERID="c2l0ZW1pbmRlcg==" # SiteMinder Super User ID
-export SPASS="UEBzc3cwcmQx" # Superuser Password
+export SPASS="Q0FEZW1vQDEyMw==" # Superuser Password
 export EKEY="RUtleTEyMw==" # Encryption Key
 
 # --- LDAP Policy Store ---
@@ -74,3 +74,6 @@ export SMREGPWD=$SPASS # SiteMinder Registration password
 
 export SSP_HELM_REPO="ssp_helm_charts"
 export SSP_HELM_REPO_URL="https://ssp_helm_charts.storage.googleapis.com"
+export SSP_SERVER="ssp-215."$DOMAIN
+
+export INGRESS_EXT_IP="192.168.0.101"

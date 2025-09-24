@@ -217,10 +217,9 @@ policyServer:
     maxSurge: 1
     maxUnavailable: 25%
   hostAliases:
-    - ip: "192.168.1.10"
+    - ip: "${INGRESS_EXT_IP}"
       hostnames:
-        - "example.com"
-        - "www.example.com"
+        - "${SSP_SERVER}"
   repository: siteminder.packages.broadcom.com/casso
   image: policy-server
   
@@ -272,10 +271,9 @@ admin:
   enabled: true
   replicas: 1
   hostAliases:
-    - ip: "192.168.1.10"
+    - ip: "${INGRESS_EXT_IP}"
       hostnames:
-        - "example.com"
-        - "www.example.com"
+        - "${SSP_SERVER}"
   policyServer:
     repository: siteminder.packages.broadcom.com/casso
     image: policy-server

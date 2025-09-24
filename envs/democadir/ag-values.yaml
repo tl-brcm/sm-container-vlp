@@ -106,10 +106,9 @@ sso:
       maxSurge: 1
       maxUnavailable: 25%
     hostAliases:
-      - ip: "192.168.1.10"
+      - ip: "${INGRESS_EXT_IP}"
         hostnames:
-          - "example.com"
-          - "www.example.com"
+          - "${SSP_SERVER}"
     livenessProbe:
       initialDelaySeconds: 40
       periodSeconds: 10
@@ -123,8 +122,8 @@ sso:
     publicHostname: "${AGNAME}"
     trustedHost: "${AGTH}"
     enableSharedRollover: false
-    aco: "${AGACO}"
-    hco: "${AGHCO}"
+    aco: "${AG_ACO}"
+    hco: "${AG_HCO}"
     corePath: /tmp/corefiles/cores/
     troubleshootingData:
       enabled: false
