@@ -77,3 +77,5 @@ export SSP_HELM_REPO_URL="https://ssp_helm_charts.storage.googleapis.com"
 export SSP_SERVER="ssp-215."$DOMAIN
 
 export INGRESS_EXT_IP="192.168.0.101"
+export SMINFRANS="sminfra"
+export SMINFRAREL="siteminder-infra"
