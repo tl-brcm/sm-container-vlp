@@ -175,7 +175,7 @@ sso:
       tlsSecret: acccess-gateway-vhostname-tls
     ag:
       metricsExporter:
-        enabled: false
+        enabled: true
       resources:
         requests:
           cpu: 400m

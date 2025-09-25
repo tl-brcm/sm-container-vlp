@@ -1,5 +1,4 @@
 #!/bin/bash
-set -ex
 MYPATH="$(cd "${BASH_SOURCE[0]%/*}"; pwd)"
 cd "${MYPATH}"
 . "${MYPATH}/../base/env.shlib"

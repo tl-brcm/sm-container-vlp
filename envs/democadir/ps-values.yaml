@@ -253,7 +253,7 @@ policyServer:
     cpuUtilization: 70
     averageRequestQueueInUse: 15
   metricsExporter:
-    enabled: false
+    enabled: true
     resources:
       requests:
         cpu: 200m
